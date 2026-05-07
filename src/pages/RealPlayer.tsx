@@ -99,14 +99,15 @@ export default function RealPlayer() {
       /* ── FACEBOOK ── */
       if (isFB || server.type === "facebook") {
         const ifr = document.createElement("iframe");
-        // تحويل رابط فيسبوك العادي إلى رابط تضمين رسمي
         const encodedUrl = encodeURIComponent(server.url);
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=560&autoplay=1`;
+        // إضافة بارامترات إضافية لمحاولة تحسين المشغل
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=auto&autoplay=1&mute=0`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
-        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share";
-        ifr.allowFullscreen = true;
+        // إعطاء كامل الصلاحيات للإطار
+        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
+        ifr.setAttribute("allowfullscreen", "true");
         container.appendChild(ifr);
         
         const t = setTimeout(() => setLoading(false), 1500);
