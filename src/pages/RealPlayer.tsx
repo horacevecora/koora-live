@@ -174,6 +174,9 @@ export default function RealPlayer() {
       }
 
       if (isFB) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "relative w-full h-full overflow-hidden";
+
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
         ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=auto&autoplay=1&mute=0`;
@@ -182,7 +185,15 @@ export default function RealPlayer() {
         ifr.style.border = "none";
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
         ifr.setAttribute("allowfullscreen", "true");
-        container.appendChild(ifr);
+        
+        // إضافة قناع علوي لإخفاء العنوان
+        const mask = document.createElement("div");
+        mask.className = "fb-top-mask";
+        
+        wrapper.appendChild(ifr);
+        wrapper.appendChild(mask);
+        container.appendChild(wrapper);
+        
         setTimeout(() => setLoading(false), 1500);
         return;
       }
@@ -306,6 +317,18 @@ export default function RealPlayer() {
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
         #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); }
         
+        /* قناع فيسبوك العلوي */
+        .fb-top-mask {
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 65px;
+          background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 70%, transparent 100%);
+          pointer-events: none; /* يسمح بالضغط من خلاله */
+          z-index: 10;
+        }
+
         /* تنسيق القص الرقمي ليوتيوب بنسبة 20% */
         .youtube-crop-wrapper {
           position: relative;
