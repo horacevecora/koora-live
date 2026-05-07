@@ -116,20 +116,37 @@ const RealPlayer = () => {
     }
   };
 
+  const toggleFullScreen = () => {
+    const elem = document.getElementById('k-wrapper');
+    if (!elem) return;
+    if (!document.fullscreenElement) {
+      elem.requestFullscreen().catch(err => {
+        console.error(`Error attempting to enable full-screen mode: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  };
+
   return (
     <div className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">
       <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
       
-      <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 pointer-events-none">
-        <div className="flex gap-4 pointer-events-auto">
+      <div className="absolute top-0 left-0 right-0 p-2 flex justify-between items-center z-50 pointer-events-none">
+        <div className="flex gap-2 pointer-events-auto">
           <button 
             onClick={handleSettingsClick}
-            className="text-slate-800 hover:text-slate-600 transition-colors p-1"
+            className="text-white/5 hover:text-white/20 transition-colors p-1"
+            title="Settings"
           >
-            <Settings size={16} />
+            <Settings size={10} />
           </button>
-          <button className="text-slate-800 hover:text-slate-600 transition-colors p-1">
-            <Maximize size={16} />
+          <button 
+            onClick={toggleFullScreen}
+            className="text-white/10 hover:text-white/40 transition-colors p-1"
+            title="Maximize"
+          >
+            <Maximize size={14} />
           </button>
         </div>
       </div>
@@ -147,9 +164,11 @@ const RealPlayer = () => {
         }
         .k-container iframe, .k-container video { width: 100%; height: 100%; border: none; object-fit: contain; }
         .plyr { width: 100%; height: 100%; }
+        #k-wrapper:fullscreen { max-width: none; width: 100vw; height: 100vh; border-radius: 0; }
+        #k-wrapper:fullscreen .k-container { height: calc(100vh - 50px); }
       `}} />
       
-      <div className="k-wrapper">
+      <div id="k-wrapper" className="k-wrapper">
         <div id="k-nav" className="k-nav"></div>
         <div id="k-container" className="k-container">
           <div className="text-center text-slate-500 p-10">
