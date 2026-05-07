@@ -176,12 +176,8 @@ export default function RealPlayer() {
       }
 
       if (isFB) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "relative w-full h-full overflow-hidden bg-black";
-
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
-        // نستخدم mute=0 ولكن المتصفح قد يمنعه، لذا سنظهر تنبيهاً
         ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=auto&autoplay=1&mute=0`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
@@ -189,18 +185,7 @@ export default function RealPlayer() {
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
         ifr.setAttribute("allowfullscreen", "true");
         
-        // إضافة قناع علوي وسفلي لإخفاء العناصر
-        const topMask = document.createElement("div");
-        topMask.className = "fb-top-mask";
-        
-        const bottomMask = document.createElement("div");
-        bottomMask.className = "fb-bottom-mask";
-        
-        wrapper.appendChild(ifr);
-        wrapper.appendChild(topMask);
-        wrapper.appendChild(bottomMask);
-        container.appendChild(wrapper);
-        
+        container.appendChild(ifr);
         setShowUnmuteHint(true);
         setTimeout(() => setLoading(false), 1500);
         return;
@@ -335,30 +320,6 @@ export default function RealPlayer() {
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
         #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); }
         
-        /* قناع فيسبوك العلوي - تم زيادة الارتفاع والعتامة */
-        .fb-top-mask {
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: 90px;
-          background: linear-gradient(to bottom, rgba(0,0,0,1) 0%, rgba(0,0,0,0.8) 60%, transparent 100%);
-          pointer-events: none;
-          z-index: 10;
-        }
-
-        /* قناع فيسبوك السفلي لإخفاء الروابط */
-        .fb-bottom-mask {
-          position: absolute;
-          bottom: 0;
-          left: 0;
-          right: 0;
-          height: 40px;
-          background: rgba(0,0,0,0.9);
-          pointer-events: none;
-          z-index: 10;
-        }
-
         /* تنسيق القص الرقمي ليوتيوب بنسبة 20% */
         .youtube-crop-wrapper {
           position: relative;
