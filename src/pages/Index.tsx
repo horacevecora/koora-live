@@ -83,7 +83,7 @@ const Index = () => {
       {/* التذييل */}
       <footer className="relative z-10 p-8 text-center border-t border-white/5 bg-black/20">
         <p className="text-slate-500 text-xs font-bold tracking-widest uppercase">
-          © 2024 Koora Live - جميع الحقوق محفوظة لموقع كورة لايف الرسمي
+          © 2026 Koora Live - جميع الحقوق محفوظة لموقع كورة لايف الرسمي
         </p>
       </footer>
     </div>
