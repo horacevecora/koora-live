@@ -83,25 +83,17 @@ export default function RealPlayer() {
 
   const getKickInfo = (url: string) => {
     if (!url) return null;
-    
-    // تنظيف الرابط من أي بارامترات زائدة
     const cleanUrl = url.split('?')[0].split('#')[0];
 
-    // 1. فيديو بتنسيق طويل: kick.com/username/videos/ID
-    const longVideoMatch = cleanUrl.match(/kick\.com\/[^\/]+\/videos\/([a-zA-Z0-9-]+)/i);
-    if (longVideoMatch) return { type: 'video', id: longVideoMatch[1] };
-
-    // 2. فيديو بتنسيق قصير: kick.com/video/ID
-    const shortVideoMatch = cleanUrl.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/i);
-    if (shortVideoMatch) return { type: 'video', id: shortVideoMatch[1] };
+    // 1. فيديو: kick.com/username/videos/ID أو kick.com/video/ID
+    const videoMatch = cleanUrl.match(/kick\.com\/(?:[^\/]+\/videos\/|video\/)([a-zA-Z0-9-]+)/i);
+    if (videoMatch) return { type: 'video', id: videoMatch[1] };
     
-    // 3. قناة: kick.com/username
+    // 2. قناة: kick.com/username
     const channelMatch = cleanUrl.match(/kick\.com\/([a-zA-Z0-9_]+)/i);
     if (channelMatch) {
       const slug = channelMatch[1].toLowerCase();
-      if (slug !== 'video' && slug !== 'videos') {
-        return { type: 'channel', id: channelMatch[1] };
-      }
+      if (!['video', 'videos'].includes(slug)) return { type: 'channel', id: channelMatch[1] };
     }
     
     return null;
@@ -132,7 +124,7 @@ export default function RealPlayer() {
         const ifr = document.createElement("iframe");
         const info = kickInfo || { type: 'channel', id: server.url };
         
-        // بناء رابط التضمين الصحيح بدون بارامترات قد تسبب مشاكل
+        // استخدام رابط التضمين الأكثر استقراراً لفيديوهات كيك
         const embedUrl = info.type === 'video' 
           ? `https://player.kick.com/video/${info.id}` 
           : `https://player.kick.com/${info.id}`;
@@ -142,7 +134,9 @@ export default function RealPlayer() {
         ifr.style.height = "100%";
         ifr.style.border = "none";
         ifr.allowFullscreen = true;
-        ifr.setAttribute("allow", "autoplay; fullscreen");
+        // إضافة صلاحيات التضمين الكاملة
+        ifr.setAttribute("allow", "autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write");
+        // إزالة referrerpolicy لتجنب مشاكل التحقق من النطاق
         
         container.appendChild(ifr);
         setLoading(false);
