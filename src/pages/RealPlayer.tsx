@@ -82,59 +82,24 @@ export default function RealPlayer() {
   };
 
   const getKickInfo = (url: string) => {
-    if (!url) return null;
-    const cleanUrl = url.split('?')[0].split('#')[0];
-
-    // 1. فيديو: kick.com/username/videos/ID أو kick.com/video/ID
-    const videoMatch = cleanUrl.match(/kick\.com\/(?:[^\/]+\/videos\/|video\/)([a-zA-Z0-9-]+)/i);
-    if (videoMatch) return { type: 'video', id: videoMatch[1], fullUrl: url };
+    // التحقق مما إذا كان رابط فيديو
+    const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
+    if (videoMatch) return { type: 'video', id: videoMatch[1] };
     
-    // 2. قناة: kick.com/username
-    const channelMatch = cleanUrl.match(/kick\.com\/([a-zA-Z0-9_]+)/i);
-    if (channelMatch) {
-      const slug = channelMatch[1].toLowerCase();
-      if (!['video', 'videos', 'clip'].includes(slug)) return { type: 'channel', id: channelMatch[1] };
-    }
+    // التحقق مما إذا كان رابط قناة
+    const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
+    if (channelMatch && channelMatch[1] !== 'video') return { type: 'channel', id: channelMatch[1] };
     
     return null;
   };
 
-  /* ---- وظيفة تشغيل m3u8 ---- */
-  const playM3u8 = useCallback((url: string, container: HTMLDivElement) => {
-    const video = document.createElement("video");
-    video.playsInline = true;
-    video.setAttribute("referrerpolicy", "no-referrer");
-    video.className = "w-full h-full";
-    container.appendChild(video);
-
-    const plyr = new Plyr(video, {
-      controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
-      settings: ["quality", "speed"],
-      ratio: "16:9",
-    });
-    plyrRef.current = plyr;
-
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hlsRef.current = hls;
-      hls.loadSource(url);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
-      hls.on(Hls.Events.ERROR, (_, data) => {
-        if (data.fatal) { setError("تعذّر تشغيل البث."); setLoading(false); }
-      });
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = url;
-      video.addEventListener("loadedmetadata", () => setLoading(false));
-    } else {
-      setError("المتصفح لا يدعم m3u8.");
-      setLoading(false);
-    }
-  }, []);
+  const isFacebookUrl = (url: string) => {
+    return url.includes("facebook.com") || url.includes("fb.watch");
+  };
 
   /* ---- بناء المشغّل حسب نوع السيرفر ---- */
   const buildPlayer = useCallback(
-    async (server: Server) => {
+    (server: Server) => {
       const container = containerRef.current;
       if (!container) return;
 
@@ -146,55 +111,21 @@ export default function RealPlayer() {
       const ytId = getYouTubeId(server.url);
       const twitchChannel = getTwitchChannel(server.url);
       const kickInfo = getKickInfo(server.url);
-      const isFB = server.url.includes("facebook.com") || server.url.includes("fb.watch");
+      const isFB = isFacebookUrl(server.url);
 
-      /* ── KICK VIDEO (Logic requested) ── */
-      if (kickInfo && kickInfo.type === 'video') {
-        try {
-          // استخدام بروكسي لجلب السورس كود وتجنب CORS
-          const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(kickInfo.fullUrl)}`;
-          const response = await fetch(proxyUrl);
-          const data = await response.json();
-          const sourceCode = data.contents;
-
-          // البحث عن الرابط بين "status":"public","source":" و "
-          const pattern = /\\"status\\":\\"public\\",\\"source\\":\\"([^"]+)\\"/;
-          const match = sourceCode.match(pattern);
-
-          if (match && match[1]) {
-            // تنظيف الرابط من الـ backslashes الزائدة
-            const m3u8Url = match[1].replace(/\\/g, '');
-            playM3u8(m3u8Url, container);
-            return;
-          } else {
-            console.warn("Could not find m3u8 in source, falling back to iframe");
-          }
-        } catch (err) {
-          console.error("Failed to fetch Kick source:", err);
-        }
+      /* ── KICK ── */
+      if (kickInfo || server.type === "kick") {
+        const ifr = document.createElement("iframe");
+        const info = kickInfo || { type: 'channel', id: server.url };
         
-        // Fallback to iframe if parsing fails
-        const ifr = document.createElement("iframe");
-        ifr.src = `https://player.kick.com/video/${kickInfo.id}`;
+        // إذا كان فيديو نستخدم مسار /video/ وإذا كانت قناة نستخدم المسار المباشر
+        const embedPath = info.type === 'video' ? `video/${info.id}` : info.id;
+        
+        ifr.src = `https://player.kick.com/${embedPath}`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
         ifr.allowFullscreen = true;
-        ifr.setAttribute("allow", "autoplay; fullscreen");
-        container.appendChild(ifr);
-        setLoading(false);
-        return;
-      }
-
-      /* ── KICK CHANNEL ── */
-      if (kickInfo && kickInfo.type === 'channel') {
-        const ifr = document.createElement("iframe");
-        ifr.src = `https://player.kick.com/${kickInfo.id}?autoplay=true`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allowFullscreen = true;
-        ifr.setAttribute("allow", "autoplay; fullscreen");
         container.appendChild(ifr);
         setLoading(false);
         return;
@@ -247,7 +178,35 @@ export default function RealPlayer() {
 
       /* ── M3U8 ── */
       if (server.type === "m3u8" || server.url.includes(".m3u8")) {
-        playM3u8(server.url, container);
+        const video = document.createElement("video");
+        video.playsInline = true;
+        video.setAttribute("referrerpolicy", "no-referrer");
+        video.className = "w-full h-full";
+        container.appendChild(video);
+
+        const plyr = new Plyr(video, {
+          controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
+          settings: ["quality", "speed"],
+          ratio: "16:9",
+        });
+        plyrRef.current = plyr;
+
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hlsRef.current = hls;
+          hls.loadSource(server.url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
+          hls.on(Hls.Events.ERROR, (_, data) => {
+            if (data.fatal) { setError("تعذّر تشغيل البث."); setLoading(false); }
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = server.url;
+          video.addEventListener("loadedmetadata", () => setLoading(false));
+        } else {
+          setError("المتصفح لا يدعم m3u8.");
+          setLoading(false);
+        }
         return;
       }
 
@@ -270,7 +229,7 @@ export default function RealPlayer() {
 
       setTimeout(() => setLoading(false), 1500);
     },
-    [destroy, playM3u8]
+    [destroy]
   );
 
   /* ---- التبديل بين السيرفرات ---- */
