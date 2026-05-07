@@ -52,7 +52,8 @@ export default function RealPlayer() {
       buildPlayer(defaultServers[0]);
     }
 
-    return () => {destroy();
+    return () => {
+      destroy();
     };
   }, []);
 
@@ -89,27 +90,25 @@ export default function RealPlayer() {
 
       const ytId = getYouTubeId(server.url);
 
-      /* ── YOUTUBE ── */
+      /* ── YOUTUBE (استخدام التضمين الرسمي المباشر لتجنب الأخطاء) ── */
       if (ytId || server.type === "youtube") {
-        const div = document.createElement("div");
-        div.className = "plyr__video-embed";
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.youtube.com/embed/${ytId || server.url}?origin=${window.location.origin}&iv_load_policy=3&modestbranding=1&playsinline=1&showinfo=0&rel=0&enablejsapi=1`;
-        ifr.allow = "autoplay; encrypted-media; picture-in-picture";
+        const id = ytId || server.url;
+        // استخدام الرابط الرسمي المباشر بدون تغليف Plyr
+        ifr.src = `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&autoplay=1`;
+        ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         ifr.allowFullscreen = true;
-        div.appendChild(ifr);
-        container.appendChild(div);
-
-        const plyr = new Plyr(div, {
-          ratio: "16:9",
-          youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
-        });
-        plyrRef.current = plyr;
-        setLoading(false);
-        return;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        container.appendChild(ifr);
+        
+        // اليوتيوب لا يحتاج تحميل طويل
+        const t = setTimeout(() => setLoading(false), 1000);
+        return () => clearTimeout(t);
       }
 
-      /* ── M3U8 ── */
+      /* ── M3U8 (استخدام Plyr الاحترافي) ── */
       if (server.type === "m3u8" || server.url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
@@ -143,7 +142,7 @@ export default function RealPlayer() {
         return;
       }
 
-      /* ── IFRAME ── */
+      /* ── IFRAME (للسيرفرات الخارجية) ── */
       const url = server.url;
       if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
