@@ -319,14 +319,14 @@ export default function RealPlayer() {
               key={i}
               onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[120px] px-4 py-5 text-sm sm:text-base font-extrabold transition-all flex items-center justify-center gap-2 border-l border-white/5",
+                "flex-1 min-w-[100px] px-3 py-3 text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-2 border-l border-white/5",
                 i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
               {i === activeIndex && (
-                <span className="relative flex h-2.5 w-2.5">
+                <span className="relative flex h-1.5 w-1.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                 </span>
               )}
               {srv.name}
