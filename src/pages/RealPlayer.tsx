@@ -157,12 +157,13 @@ export default function RealPlayer() {
 
       if (dmId) {
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1&mute=1`;
+        // إضافة syndication و params لتحسين التوافق
+        ifr.src = `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1&mute=1&api=postMessage&id=player&syndication=LR`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
         ifr.allowFullscreen = true;
-        ifr.allow = "autoplay; fullscreen";
+        ifr.allow = "autoplay; fullscreen; picture-in-picture";
         container.appendChild(ifr);
         setShowUnmuteHint(true);
         setLoading(false);
@@ -295,17 +296,17 @@ export default function RealPlayer() {
               key={i}
               onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[120px] px-4 py-5 text-sm sm:text-base font-extrabold transition-all flex items-center justify-center gap-2 border-l border-white/5",
+                "flex-1 min-w-[120px] px-4 py-5 text-sm sm:text-base font-black transition-all flex items-center justify-center gap-3 border-l border-white/5",
                 i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
               {i === activeIndex && (
-                <span className="relative flex h-2.5 w-2.5">
+                <span className="relative flex h-3 w-3">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
                 </span>
               )}
-              {srv.name}
+              <span className="truncate">{srv.name}</span>
             </button>
           ))}
         </nav>
