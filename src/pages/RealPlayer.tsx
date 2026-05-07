@@ -34,7 +34,6 @@ export default function RealPlayer() {
 
   /* ---- إدارة سياسة المرجع (Referrer Policy) ---- */
   useEffect(() => {
-    // إضافة ميتا تاج لمنع إرسال المرجع، وهذا يحل مشكلة 403 في معظم السيرفرات
     const meta = document.createElement('meta');
     meta.name = "referrer";
     meta.content = "no-referrer";
@@ -67,7 +66,6 @@ export default function RealPlayer() {
     };
   }, []);
 
-  /* ---- تنظيف المشغّل القديم ---- */
   const destroy = useCallback(() => {
     if (hlsRef.current) {
       hlsRef.current.destroy();
@@ -79,7 +77,6 @@ export default function RealPlayer() {
     }
   }, []);
 
-  /* ---- استخراج المعرفات من الروابط ---- */
   const getYouTubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
@@ -87,7 +84,7 @@ export default function RealPlayer() {
   };
 
   const getDailymotionId = (url: string) => {
-    // تحديث الريجكس ليشمل روابط cdndirector
+    // استخراج المعرف من روابط الفيديو أو روابط الـ CDN المباشرة
     const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video|\/cdn\/live\/video\/)|\/dai\.ly|cdndirector\.dailymotion\.com\/cdn\/live\/video\/)([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
   };
@@ -110,7 +107,23 @@ export default function RealPlayer() {
     return url.includes("facebook.com") || url.includes("fb.watch");
   };
 
-  /* ---- بناء المشغّل حسب نوع السيرفر ---- */
+  const loadDailymotionIframe = (id: string) => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.innerHTML = "";
+    const ifr = document.createElement("iframe");
+    // استخدام مشغل geo الرسمي لتجاوز قيود CORS
+    ifr.src = `https://geo.dailymotion.com/player.html?video=${id}&autoplay=true&mute=true`;
+    ifr.style.width = "100%";
+    ifr.style.height = "100%";
+    ifr.style.border = "none";
+    ifr.allowFullscreen = true;
+    ifr.allow = "autoplay; fullscreen; picture-in-picture; encrypted-media";
+    container.appendChild(ifr);
+    setShowUnmuteHint(true);
+    setLoading(false);
+  };
+
   const buildPlayer = useCallback(
     (server: Server) => {
       const container = containerRef.current;
@@ -123,8 +136,15 @@ export default function RealPlayer() {
       setShowUnmuteHint(false);
 
       const url = server.url.trim();
+      const dmId = getDailymotionId(url);
 
-      /* 1. الأولوية القصوى لروابط M3U8 المباشرة */
+      // إذا كان الرابط يخص Dailymotion، نستخدم الـ Iframe فوراً لتجنب CORS Error
+      if (dmId) {
+        loadDailymotionIframe(dmId);
+        return;
+      }
+
+      /* 1. روابط M3U8 المباشرة (لغير Dailymotion) */
       if (server.type === "m3u8" || url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
@@ -141,9 +161,7 @@ export default function RealPlayer() {
 
         if (Hls.isSupported()) {
           const hls = new Hls({ 
-            xhrSetup: (xhr) => { 
-              xhr.withCredentials = false; 
-            },
+            xhrSetup: (xhr) => { xhr.withCredentials = false; },
             enableWorker: true,
             lowLatencyMode: true
           });
@@ -153,13 +171,8 @@ export default function RealPlayer() {
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
             if (data.fatal) { 
-              const dmId = getDailymotionId(url);
-              if (dmId) {
-                loadDailymotionIframe(dmId);
-              } else {
-                setError("خطأ في تشغيل الرابط (403 Forbidden). تأكد من صلاحية الرابط."); 
-                setLoading(false); 
-              }
+              setError("خطأ في تشغيل الرابط (CORS/Forbidden)."); 
+              setLoading(false); 
             }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
@@ -172,31 +185,11 @@ export default function RealPlayer() {
         return;
       }
 
-      const loadDailymotionIframe = (id: string) => {
-        container.innerHTML = "";
-        const ifr = document.createElement("iframe");
-        ifr.src = `https://geo.dailymotion.com/player.html?video=${id}&autoplay=true&mute=true`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allowFullscreen = true;
-        ifr.allow = "autoplay; fullscreen; picture-in-picture; encrypted-media";
-        container.appendChild(ifr);
-        setShowUnmuteHint(true);
-        setLoading(false);
-      };
-
-      /* 2. روابط المنصات */
+      /* 2. روابط المنصات الأخرى */
       const ytId = getYouTubeId(url);
-      const dmId = getDailymotionId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
       const isFB = isFacebookUrl(url);
-
-      if (dmId) {
-        loadDailymotionIframe(dmId);
-        return;
-      }
 
       if (kickInfo) {
         const ifr = document.createElement("iframe");
@@ -233,7 +226,6 @@ export default function RealPlayer() {
         ifr.style.border = "none";
         ifr.setAttribute("allowFullScreen", "true");
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
-        
         container.appendChild(ifr);
         setShowUnmuteHint(true);
         setTimeout(() => setLoading(false), 1500);
@@ -243,12 +235,10 @@ export default function RealPlayer() {
       if (ytId) {
         const wrapper = document.createElement("div");
         wrapper.className = "youtube-crop-wrapper";
-        
         const ifr = document.createElement("iframe");
         ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&iv_load_policy=3&controls=1`;
         ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         ifr.allowFullscreen = true;
-        
         wrapper.appendChild(ifr);
         container.appendChild(wrapper);
         setTimeout(() => setLoading(false), 1000);
@@ -256,17 +246,13 @@ export default function RealPlayer() {
       }
 
       /* 3. IFRAME عام */
-      const isKnownPlatform = url.includes("dailymotion") || url.includes("youtube") || url.includes("facebook") || url.includes("twitch");
-      
       if (url.includes("<iframe")) {
-        const refPolicy = isKnownPlatform ? '' : 'referrerpolicy="no-referrer"';
-        container.innerHTML = url.replace("<iframe", `<iframe ${refPolicy} allowfullscreen`);
+        container.innerHTML = url.replace("<iframe", `<iframe allowfullscreen`);
         const ifr = container.querySelector("iframe");
         if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
         const ifr = document.createElement("iframe");
         ifr.src = url;
-        if (!isKnownPlatform) ifr.setAttribute("referrerpolicy", "no-referrer");
         ifr.allowFullscreen = true;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
@@ -279,7 +265,6 @@ export default function RealPlayer() {
     [destroy]
   );
 
-  /* ---- التبديل بين السيرفرات ---- */
   const switchServer = useCallback(
     (index: number) => {
       if (servers[index]) {
@@ -316,7 +301,6 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* المشغل مع الإطار المضيء المطور */}
       <div 
         id="main-player-wrapper" 
         className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]"
@@ -374,7 +358,6 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* التذييل */}
       <footer className="w-full max-w-[1200px] mt-6 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
         <div className="flex justify-between w-full items-center opacity-40">
           <span dir="ltr" className="font-black tracking-tight">Koora Live - Kora Online</span>
@@ -387,22 +370,8 @@ export default function RealPlayer() {
         .plyr { width: 100%; height: 100%; }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
         #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
-        
-        .youtube-crop-wrapper {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          overflow: hidden;
-          background: #000;
-        }
-        .youtube-crop-wrapper iframe {
-          position: absolute;
-          width: 120%;
-          height: 120%;
-          top: -10%;
-          left: -10%;
-          border: none;
-        }
+        .youtube-crop-wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
+        .youtube-crop-wrapper iframe { position: absolute; width: 120%; height: 120%; top: -10%; left: -10%; border: none; }
       `}</style>
     </div>
   );
