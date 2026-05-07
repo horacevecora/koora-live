@@ -82,13 +82,17 @@ export default function RealPlayer() {
   };
 
   const getKickInfo = (url: string) => {
-    // التحقق مما إذا كان رابط فيديو
-    const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
-    if (videoMatch) return { type: 'video', id: videoMatch[1] };
+    // 1. التحقق من تنسيق الفيديو الطويل: kick.com/username/videos/ID
+    const longVideoMatch = url.match(/kick\.com\/[a-zA-Z0-9_]+\/videos\/([a-zA-Z0-9-]+)/);
+    if (longVideoMatch) return { type: 'video', id: longVideoMatch[1] };
+
+    // 2. التحقق من تنسيق الفيديو القصير: kick.com/video/ID
+    const shortVideoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
+    if (shortVideoMatch) return { type: 'video', id: shortVideoMatch[1] };
     
-    // التحقق مما إذا كان رابط قناة
+    // 3. التحقق مما إذا كان رابط قناة: kick.com/username
     const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
-    if (channelMatch && channelMatch[1] !== 'video') return { type: 'channel', id: channelMatch[1] };
+    if (channelMatch && !['video', 'videos'].includes(channelMatch[1])) return { type: 'channel', id: channelMatch[1] };
     
     return null;
   };
