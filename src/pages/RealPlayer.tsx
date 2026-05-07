@@ -77,6 +77,31 @@ export default function RealPlayer() {
     }
   }, []);
 
+  /* ---- دوال استخراج المعرفات ---- */
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const getTwitchChannel = (url: string) => {
+    const match = url.match(/(?:twitch\.tv\/)([a-zA-Z0-9_]+)/);
+    return match ? match[1] : null;
+  };
+
+  const getKickInfo = (url: string) => {
+    if (url.includes('.m3u8')) return null;
+    const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
+    if (videoMatch) return { type: 'video', id: videoMatch[1] };
+    const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
+    if (channelMatch && channelMatch[1] !== 'video' && channelMatch[1] !== 'api') return { type: 'channel', id: channelMatch[1] };
+    return null;
+  };
+
+  const isFacebookUrl = (url: string) => {
+    return url.includes("facebook.com") || url.includes("fb.watch");
+  };
+
   const getDailymotionId = (url: string) => {
     const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video|\/cdn\/live\/video\/)|\/dai\.ly|cdndirector\.dailymotion\.com\/cdn\/live\/video\/)([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
@@ -94,12 +119,12 @@ export default function RealPlayer() {
       setShowUnmuteHint(false);
 
       const url = server.url.trim();
-      const dmId = getDailymotionId(url);
 
-      // إذا كان الرابط لـ Dailymotion (سواء مباشر أو صفحة فيديو)
-      if (dmId) {
+      // 1. التحقق من Dailymotion أولاً (سواء رابط صفحة أو m3u8)
+      const dmId = getDailymotionId(url);
+      if (dmId && !url.includes(".m3u8")) {
         const ifr = document.createElement("iframe");
-        // استخدام الـ embed التقليدي مع إخفاء المرجع تماماً
+        // استخدام رابط الـ embed الرسمي لتجنب "Refused to connect"
         ifr.src = `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1&mute=1`;
         ifr.setAttribute("referrerpolicy", "no-referrer");
         ifr.style.width = "100%";
@@ -113,7 +138,7 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 1. روابط M3U8 الأخرى */
+      // 2. روابط M3U8 (بما فيها روابط cdndirector)
       if (url.includes(".m3u8") || server.type === "m3u8") {
         const video = document.createElement("video");
         video.playsInline = true;
@@ -140,7 +165,67 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 2. IFRAME عام */
+      // 3. روابط المنصات الأخرى
+      const ytId = getYouTubeId(url);
+      const twitchChannel = getTwitchChannel(url);
+      const kickInfo = getKickInfo(url);
+      const isFB = isFacebookUrl(url);
+
+      if (kickInfo) {
+        const ifr = document.createElement("iframe");
+        const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
+        ifr.src = `https://player.kick.com/${embedPath}`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        container.appendChild(ifr);
+        setLoading(false);
+        return;
+      }
+
+      if (twitchChannel) {
+        const ifr = document.createElement("iframe");
+        const domain = window.location.hostname;
+        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${domain}&autoplay=true&muted=false`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        container.appendChild(ifr);
+        setLoading(false);
+        return;
+      }
+
+      if (isFB) {
+        const ifr = document.createElement("iframe");
+        const encodedUrl = encodeURIComponent(url);
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0&allowfullscreen=true`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.setAttribute("allowFullScreen", "true");
+        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
+        container.appendChild(ifr);
+        setShowUnmuteHint(true);
+        setTimeout(() => setLoading(false), 1500);
+        return;
+      }
+
+      if (ytId) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "youtube-crop-wrapper";
+        const ifr = document.createElement("iframe");
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&iv_load_policy=3&controls=1`;
+        ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        ifr.allowFullscreen = true;
+        wrapper.appendChild(ifr);
+        container.appendChild(wrapper);
+        setTimeout(() => setLoading(false), 1000);
+        return;
+      }
+
+      // 4. IFRAME عام أو روابط أخرى
       if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", `<iframe referrerpolicy="no-referrer" allowfullscreen`);
         const ifr = container.querySelector("iframe");
@@ -266,6 +351,8 @@ export default function RealPlayer() {
         .plyr { width: 100%; height: 100%; }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
         #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
+        .youtube-crop-wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
+        .youtube-crop-wrapper iframe { position: absolute; width: 120%; height: 120%; top: -10%; left: -10%; border: none; }
       `}</style>
     </div>
   );
