@@ -29,7 +29,6 @@ const RealPlayer = () => {
         await loadScript("https://cdn.jsdelivr.net/npm/hls.js@latest");
         await loadScript("https://cdn.plyr.io/3.7.8/plyr.js");
 
-        // تحميل السيرفرات من localStorage
         const savedServers = localStorage.getItem('player_servers');
         const servers = savedServers ? JSON.parse(savedServers) : [{"name":"سيرفر 1","url":"https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1","type":"iframe"}];
         
@@ -113,7 +112,6 @@ const RealPlayer = () => {
       navigate('/admin');
     } else {
       setClickCount(newCount);
-      // إعادة التعيين بعد ثانيتين إذا لم يكمل الضغطات
       setTimeout(() => setClickCount(0), 2000);
     }
   };
@@ -122,30 +120,26 @@ const RealPlayer = () => {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">
       <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
       
-      {/* شريط علوي يحتوي على الأيقونات المخفية */}
       <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-50 pointer-events-none">
         <div className="flex gap-4 pointer-events-auto">
           <button 
             onClick={handleSettingsClick}
-            className="text-slate-700 hover:text-slate-500 transition-colors p-1"
+            className="text-slate-800 hover:text-slate-600 transition-colors p-1"
           >
             <Settings size={16} />
           </button>
-          <button className="text-slate-700 hover:text-slate-500 transition-colors p-1">
+          <button className="text-slate-800 hover:text-slate-600 transition-colors p-1">
             <Maximize size={16} />
           </button>
-        </div>
-        <div className="bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded pointer-events-auto">
-          !Live Now
         </div>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
         :root { --plyr-color-main: #6366f1; }
         .k-wrapper { width: 100%; max-width: 1000px; margin: 0 auto; border-radius: 0; overflow: hidden; box-shadow: 0 20px 50px rgba(0,0,0,0.5); font-family: sans-serif; background: #000; direction: rtl; }
-        .k-nav { display: flex; background: #020617; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; padding: 5px; gap: 5px; }
-        .k-btn { flex: 1; min-width: 80px; padding: 10px; border: none; background: #0891b2; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; border-radius: 5px; font-size: 14px; }
-        .k-btn.active { background: #b91c1c; color: #fff; }
+        .k-nav { display: flex; background: #0f172a; border-bottom: 1px solid rgba(255,255,255,0.1); flex-wrap: wrap; }
+        .k-btn { flex: 1; min-width: 100px; padding: 15px; border: none; background: transparent; color: #94a3b8; font-weight: bold; cursor: pointer; transition: 0.3s; border-right: 1px solid rgba(255,255,255,0.05); }
+        .k-btn.active { background: #6366f1; color: #fff; }
         .k-container { width: 100%; height: 500px; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; }
         @media (min-width: 768px) { 
           .k-wrapper { border-radius: 20px; }
@@ -158,7 +152,6 @@ const RealPlayer = () => {
       <div className="k-wrapper">
         <div id="k-nav" className="k-nav"></div>
         <div id="k-container" className="k-container">
-          {/* رسالة افتراضية في حالة عدم وجود بث */}
           <div className="text-center text-slate-500 p-10">
             <p className="mb-4">The manifest could not be loaded</p>
             <p className="text-2xl font-bold text-white">لا تنسى ذكر الله</p>
