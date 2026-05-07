@@ -82,17 +82,21 @@ export default function RealPlayer() {
   };
 
   const getKickInfo = (url: string) => {
+    if (!url) return null;
+    
     // 1. التحقق من تنسيق الفيديو الطويل: kick.com/username/videos/ID
-    const longVideoMatch = url.match(/kick\.com\/[a-zA-Z0-9_]+\/videos\/([a-zA-Z0-9-]+)/);
+    const longVideoMatch = url.match(/kick\.com\/[a-zA-Z0-9_]+\/videos\/([a-zA-Z0-9-]+)/i);
     if (longVideoMatch) return { type: 'video', id: longVideoMatch[1] };
 
     // 2. التحقق من تنسيق الفيديو القصير: kick.com/video/ID
-    const shortVideoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
+    const shortVideoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/i);
     if (shortVideoMatch) return { type: 'video', id: shortVideoMatch[1] };
     
     // 3. التحقق مما إذا كان رابط قناة: kick.com/username
-    const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
-    if (channelMatch && !['video', 'videos'].includes(channelMatch[1])) return { type: 'channel', id: channelMatch[1] };
+    const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/i);
+    if (channelMatch && !['video', 'videos'].includes(channelMatch[1].toLowerCase())) {
+      return { type: 'channel', id: channelMatch[1] };
+    }
     
     return null;
   };
@@ -122,14 +126,16 @@ export default function RealPlayer() {
         const ifr = document.createElement("iframe");
         const info = kickInfo || { type: 'channel', id: server.url };
         
-        // إذا كان فيديو نستخدم مسار /video/ وإذا كانت قناة نستخدم المسار المباشر
+        // بناء رابط التضمين الصحيح
         const embedPath = info.type === 'video' ? `video/${info.id}` : info.id;
+        ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=false`;
         
-        ifr.src = `https://player.kick.com/${embedPath}`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
         ifr.allowFullscreen = true;
+        ifr.setAttribute("allow", "autoplay; fullscreen");
+        
         container.appendChild(ifr);
         setLoading(false);
         return;
