@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
 
-type ServerType = "iframe" | "m3u8" | "youtube";
+type ServerType = "iframe" | "m3u8" | "youtube" | "facebook";
 
 interface Server {
   name: string;
@@ -76,6 +76,11 @@ export default function RealPlayer() {
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
+  /* ---- التحقق من رابط فيسبوك ---- */
+  const isFacebookUrl = (url: string) => {
+    return url.includes("facebook.com") || url.includes("fb.watch");
+  };
+
   /* ---- بناء المشغّل حسب نوع السيرفر ---- */
   const buildPlayer = useCallback(
     (server: Server) => {
@@ -89,12 +94,29 @@ export default function RealPlayer() {
       setError(null);
 
       const ytId = getYouTubeId(server.url);
+      const isFB = isFacebookUrl(server.url);
 
-      /* ── YOUTUBE (استخدام التضمين الرسمي المباشر لتجنب الأخطاء) ── */
+      /* ── FACEBOOK ── */
+      if (isFB || server.type === "facebook") {
+        const ifr = document.createElement("iframe");
+        // تحويل رابط فيسبوك العادي إلى رابط تضمين رسمي
+        const encodedUrl = encodeURIComponent(server.url);
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=560&autoplay=1`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share";
+        ifr.allowFullscreen = true;
+        container.appendChild(ifr);
+        
+        const t = setTimeout(() => setLoading(false), 1500);
+        return () => clearTimeout(t);
+      }
+
+      /* ── YOUTUBE ── */
       if (ytId || server.type === "youtube") {
         const ifr = document.createElement("iframe");
         const id = ytId || server.url;
-        // استخدام الرابط الرسمي المباشر بدون تغليف Plyr
         ifr.src = `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&autoplay=1`;
         ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         ifr.allowFullscreen = true;
@@ -103,12 +125,11 @@ export default function RealPlayer() {
         ifr.style.border = "none";
         container.appendChild(ifr);
         
-        // اليوتيوب لا يحتاج تحميل طويل
         const t = setTimeout(() => setLoading(false), 1000);
         return () => clearTimeout(t);
       }
 
-      /* ── M3U8 (استخدام Plyr الاحترافي) ── */
+      /* ── M3U8 ── */
       if (server.type === "m3u8" || server.url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
@@ -142,7 +163,7 @@ export default function RealPlayer() {
         return;
       }
 
-      /* ── IFRAME (للسيرفرات الخارجية) ── */
+      /* ── IFRAME ── */
       const url = server.url;
       if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
