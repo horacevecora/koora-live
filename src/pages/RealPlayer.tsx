@@ -72,12 +72,11 @@ export default function RealPlayer() {
   /* ---- استخراج الرابط المباشر من كيك (في الخلفية) ---- */
   const tryExtractKickStream = async (url: string): Promise<string | null> => {
     try {
-      // محاولة الجلب في الخلفية
+      // محاولة الجلب في الخلفية - قد تفشل بسبب CORS في المتصفح
       const response = await fetch(url);
       if (!response.ok) return null;
       const html = await response.text();
       
-      // البحث عن النمط: "status":"public","source":"..."
       const regex = /"source"\s*:\s*"([^"]+)"/;
       const match = html.match(regex);
       
@@ -85,7 +84,7 @@ export default function RealPlayer() {
         return match[1].replace(/\\/g, ''); // تنظيف الرابط
       }
     } catch (e) {
-      console.warn("Background extraction failed (CORS or Network)", e);
+      console.warn("Background extraction failed", e);
     }
     return null;
   };
@@ -117,6 +116,7 @@ export default function RealPlayer() {
       if (isM3U8) {
         const video = document.createElement("video");
         video.playsInline = true;
+        video.setAttribute('referrerpolicy', 'no-referrer');
         video.className = "w-full h-full";
         container.appendChild(video);
 
@@ -139,28 +139,30 @@ export default function RealPlayer() {
           video.src = finalUrl;
           video.addEventListener("loadedmetadata", () => setLoading(false));
         }
-        return;
-      }
-
-      /* ── الحالة 2: النظام الأصلي (Iframe) لفيسبوك ويوتيوب والبقية ── */
-      if (finalUrl.includes("<iframe")) {
-        // إذا كان الكود المدخل هو كود iframe كامل
-        container.innerHTML = finalUrl;
       } else {
-        // إذا كان رابطاً عادياً، نضعه في iframe بسيط
-        const ifr = document.createElement("iframe");
-        ifr.src = finalUrl;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allowFullscreen = true;
-        // أضفنا هذه الخصائص لضمان عمل فيسبوك ويوتيوب
-        ifr.setAttribute("allow", "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share");
-        container.appendChild(ifr);
+        /* ── الحالة 2: النظام الأصلي (Iframe) المستقر ── */
+        const url = server.url;
+        if (url.includes('<iframe')) {
+          container.innerHTML = url.replace('<iframe', '<iframe referrerpolicy="no-referrer" allowfullscreen');
+          const ifr = container.querySelector('iframe');
+          if (ifr) { 
+            ifr.style.width = '100%'; 
+            ifr.style.height = '100%'; 
+            ifr.style.objectFit = 'contain'; 
+          }
+        } else {
+          const ifr = document.createElement('iframe');
+          ifr.src = url;
+          ifr.setAttribute('referrerpolicy', 'no-referrer');
+          ifr.style.width = '100%';
+          ifr.style.height = '100%';
+          ifr.style.objectFit = 'contain';
+          ifr.allowFullscreen = true;
+          container.appendChild(ifr);
+        }
+        // إخفاء شاشة التحميل للأيفريم
+        setTimeout(() => setLoading(false), 1000);
       }
-
-      // إخفاء شاشة التحميل للأيفريم
-      setTimeout(() => setLoading(false), 1000);
     },
     [destroy]
   );
