@@ -82,13 +82,14 @@ export default function RealPlayer() {
   };
 
   const getKickInfo = (url: string) => {
-    // التحقق مما إذا كان رابط فيديو
+    // إذا كان الرابط يحتوي على manifest أو m3u8، نتجاهله هنا ليعالج كمشغل مباشر
+    if (url.includes('.m3u8')) return null;
+
     const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
     if (videoMatch) return { type: 'video', id: videoMatch[1] };
     
-    // التحقق مما إذا كان رابط قناة
     const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
-    if (channelMatch && channelMatch[1] !== 'video') return { type: 'channel', id: channelMatch[1] };
+    if (channelMatch && channelMatch[1] !== 'video' && channelMatch[1] !== 'api') return { type: 'channel', id: channelMatch[1] };
     
     return null;
   };
@@ -108,76 +109,10 @@ export default function RealPlayer() {
       setLoading(true);
       setError(null);
 
-      const ytId = getYouTubeId(server.url);
-      const twitchChannel = getTwitchChannel(server.url);
-      const kickInfo = getKickInfo(server.url);
-      const isFB = isFacebookUrl(server.url);
+      const url = server.url.trim();
 
-      /* ── KICK ── */
-      if (kickInfo || server.type === "kick") {
-        const ifr = document.createElement("iframe");
-        const info = kickInfo || { type: 'channel', id: server.url };
-        
-        // إذا كان فيديو نستخدم مسار /video/ وإذا كانت قناة نستخدم المسار المباشر
-        const embedPath = info.type === 'video' ? `video/${info.id}` : info.id;
-        
-        ifr.src = `https://player.kick.com/${embedPath}`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-        setLoading(false);
-        return;
-      }
-
-      /* ── TWITCH ── */
-      if (twitchChannel || server.type === "twitch") {
-        const ifr = document.createElement("iframe");
-        const channel = twitchChannel || server.url;
-        const domain = window.location.hostname;
-        ifr.src = `https://player.twitch.tv/?channel=${channel}&parent=${domain}&autoplay=true&muted=false`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-        setLoading(false);
-        return;
-      }
-
-      /* ── FACEBOOK ── */
-      if (isFB || server.type === "facebook") {
-        const ifr = document.createElement("iframe");
-        const encodedUrl = encodeURIComponent(server.url);
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=auto&autoplay=1&mute=0`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
-        ifr.setAttribute("allowfullscreen", "true");
-        container.appendChild(ifr);
-        setTimeout(() => setLoading(false), 1500);
-        return;
-      }
-
-      /* ── YOUTUBE ── */
-      if (ytId || server.type === "youtube") {
-        const ifr = document.createElement("iframe");
-        const id = ytId || server.url;
-        ifr.src = `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&autoplay=1`;
-        ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
-        ifr.allowFullscreen = true;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        container.appendChild(ifr);
-        setTimeout(() => setLoading(false), 1000);
-        return;
-      }
-
-      /* ── M3U8 ── */
-      if (server.type === "m3u8" || server.url.includes(".m3u8")) {
+      /* 1. الأولوية القصوى لروابط M3U8 المباشرة */
+      if (server.type === "m3u8" || url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.setAttribute("referrerpolicy", "no-referrer");
@@ -192,26 +127,92 @@ export default function RealPlayer() {
         plyrRef.current = plyr;
 
         if (Hls.isSupported()) {
-          const hls = new Hls();
+          const hls = new Hls({
+            xhrSetup: (xhr) => {
+              xhr.withCredentials = false;
+            }
+          });
           hlsRef.current = hls;
-          hls.loadSource(server.url);
+          hls.loadSource(url);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) { setError("تعذّر تشغيل البث."); setLoading(false); }
+            if (data.fatal) { 
+              console.error("HLS Fatal Error:", data);
+              setError("تعذّر تشغيل البث المباشر."); 
+              setLoading(false); 
+            }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = server.url;
+          video.src = url;
           video.addEventListener("loadedmetadata", () => setLoading(false));
         } else {
-          setError("المتصفح لا يدعم m3u8.");
+          setError("المتصفح لا يدعم تشغيل هذا النوع من الروابط.");
           setLoading(false);
         }
         return;
       }
 
-      /* ── IFRAME ── */
-      const url = server.url;
+      /* 2. روابط المنصات (YouTube, Twitch, Kick, Facebook) */
+      const ytId = getYouTubeId(url);
+      const twitchChannel = getTwitchChannel(url);
+      const kickInfo = getKickInfo(url);
+      const isFB = isFacebookUrl(url);
+
+      if (kickInfo) {
+        const ifr = document.createElement("iframe");
+        const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
+        ifr.src = `https://player.kick.com/${embedPath}`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        container.appendChild(ifr);
+        setLoading(false);
+        return;
+      }
+
+      if (twitchChannel) {
+        const ifr = document.createElement("iframe");
+        const domain = window.location.hostname;
+        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${domain}&autoplay=true&muted=false`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        container.appendChild(ifr);
+        setLoading(false);
+        return;
+      }
+
+      if (isFB) {
+        const ifr = document.createElement("iframe");
+        const encodedUrl = encodeURIComponent(url);
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=auto&autoplay=1&mute=0`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
+        ifr.setAttribute("allowfullscreen", "true");
+        container.appendChild(ifr);
+        setTimeout(() => setLoading(false), 1500);
+        return;
+      }
+
+      if (ytId) {
+        const ifr = document.createElement("iframe");
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1`;
+        ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        ifr.allowFullscreen = true;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        container.appendChild(ifr);
+        setTimeout(() => setLoading(false), 1000);
+        return;
+      }
+
+      /* 3. IFRAME عام أو روابط أخرى */
       if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
         const ifr = container.querySelector("iframe");
