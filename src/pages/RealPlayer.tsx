@@ -69,29 +69,23 @@ export default function RealPlayer() {
     }
   }, []);
 
-  /* ---- استخراج الرابط المباشر من كيك (Logic) ---- */
+  /* ---- استخراج الرابط المباشر من كيك (فقط لفيديوهات كيك) ---- */
   const tryExtractKickStream = async (url: string): Promise<string | null> => {
     try {
-      // ملاحظة: قد تحتاج لبروكسي CORS إذا كنت تشغل هذا في بيئة إنتاج حقيقية
-      // هنا نحاول جلب الصفحة والبحث عن النمط الذي ذكرته
       const response = await fetch(url);
       const html = await response.text();
-      
-      // البحث عن "source":"رابط.m3u8"
       const regex = /"source"\s*:\s*"([^"]+)"/;
       const match = html.match(regex);
-      
       if (match && match[1]) {
-        // تنظيف الرابط من الـ backslashes المهربة
         return match[1].replace(/\\/g, '');
       }
     } catch (e) {
-      console.warn("Extraction failed, falling back to iframe", e);
+      console.warn("Kick extraction failed", e);
     }
     return null;
   };
 
-  /* ---- بناء المشغّل حسب نوع السيرفر ---- */
+  /* ---- بناء المشغّل ---- */
   const buildPlayer = useCallback(
     async (server: Server) => {
       const container = containerRef.current;
@@ -102,29 +96,27 @@ export default function RealPlayer() {
       setLoading(true);
       setError(null);
 
-      // محاولة استخراج الرابط المباشر إذا كان فيديو كيك
       let finalUrl = server.url;
-      let finalType = server.type;
+      let isM3U8 = server.type === "m3u8" || server.url.includes(".m3u8");
 
+      // منطق خاص بـ Kick فقط
       if (server.url.includes("kick.com") && server.url.includes("/videos/")) {
         const extracted = await tryExtractKickStream(server.url);
         if (extracted) {
           finalUrl = extracted;
-          finalType = "m3u8";
+          isM3U8 = true;
         }
       }
 
-      /* ── M3U8 (بما في ذلك المستخرج من كيك) ── */
-      if (finalType === "m3u8" || finalUrl.includes(".m3u8")) {
+      /* ── تشغيل M3U8 (HLS) ── */
+      if (isM3U8) {
         const video = document.createElement("video");
         video.playsInline = true;
-        video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
         container.appendChild(video);
 
         const plyr = new Plyr(video, {
           controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
-          settings: ["quality", "speed"],
           ratio: "16:9",
         });
         plyrRef.current = plyr;
@@ -136,42 +128,22 @@ export default function RealPlayer() {
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) { setError("تعذّر تشغيل البث المباشر."); setLoading(false); }
+            if (data.fatal) { setError("تعذّر تشغيل البث."); setLoading(false); }
           });
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+        } else {
           video.src = finalUrl;
           video.addEventListener("loadedmetadata", () => setLoading(false));
-        } else {
-          setError("المتصفح لا يدعم m3u8.");
-          setLoading(false);
         }
         return;
       }
 
-      /* ── IFRAME / OTHER (Fallback) ── */
-      const isKick = server.url.includes("kick.com");
-      if (isKick && !finalUrl.includes(".m3u8")) {
-        // إذا فشل الاستخراج، نستخدم الـ Iframe الرسمي
-        const ifr = document.createElement("iframe");
-        const match = server.url.match(/kick\.com\/(?:[^\/]+\/videos\/|video\/)([a-zA-Z0-9-]+)/i);
-        const videoId = match ? match[1] : "";
-        ifr.src = `https://player.kick.com/video/${videoId}?autoplay=true`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-        setLoading(false);
-        return;
-      }
-
-      // المنطق القديم لبقية السيرفرات...
-      const url = server.url;
-      if (url.includes("<iframe")) {
-        container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
+      /* ── تشغيل IFRAME (فيسبوك، يوتيوب، سيرفرات خارجية) ── */
+      // نعود للطريقة الأصلية التي كانت تعمل
+      if (finalUrl.includes("<iframe")) {
+        container.innerHTML = finalUrl.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
       } else {
         const ifr = document.createElement("iframe");
-        ifr.src = url;
+        ifr.src = finalUrl;
         ifr.setAttribute("referrerpolicy", "no-referrer");
         ifr.allowFullscreen = true;
         ifr.style.width = "100%";
@@ -180,12 +152,12 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       }
 
-      setTimeout(() => setLoading(false), 1500);
+      // إخفاء التحميل بعد فترة قصيرة للأيفريم
+      setTimeout(() => setLoading(false), 1000);
     },
     [destroy]
   );
 
-  /* ---- التبديل بين السيرفرات ---- */
   const switchServer = useCallback(
     (index: number) => {
       if (servers[index]) {
@@ -244,7 +216,7 @@ export default function RealPlayer() {
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-              <p className="mt-4 text-slate-300 text-sm">جارٍ تحليل الرابط واستخراج البث...</p>
+              <p className="mt-4 text-slate-300 text-sm">جارٍ تشغيل البث...</p>
             </div>
           )}
 
