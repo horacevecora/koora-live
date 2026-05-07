@@ -84,7 +84,7 @@ export default function RealPlayer() {
   };
 
   const getDailymotionId = (url: string) => {
-    // استخراج المعرف من روابط الفيديو أو روابط الـ CDN المباشرة
+    // دعم روابط cdndirector المباشرة وروابط dailymotion العادية
     const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video|\/cdn\/live\/video\/)|\/dai\.ly|cdndirector\.dailymotion\.com\/cdn\/live\/video\/)([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
   };
@@ -112,7 +112,7 @@ export default function RealPlayer() {
     if (!container) return;
     container.innerHTML = "";
     const ifr = document.createElement("iframe");
-    // استخدام مشغل geo الرسمي لتجاوز قيود CORS
+    // استخدام مشغل geo الرسمي لتجاوز قيود CORS و 403
     ifr.src = `https://geo.dailymotion.com/player.html?video=${id}&autoplay=true&mute=true`;
     ifr.style.width = "100%";
     ifr.style.height = "100%";
@@ -138,7 +138,7 @@ export default function RealPlayer() {
       const url = server.url.trim();
       const dmId = getDailymotionId(url);
 
-      // إذا كان الرابط يخص Dailymotion، نستخدم الـ Iframe فوراً لتجنب CORS Error
+      // إذا كان الرابط من نوع cdndirector أو dailymotion، نستخدم المعرف فوراً
       if (dmId) {
         loadDailymotionIframe(dmId);
         return;
@@ -171,7 +171,7 @@ export default function RealPlayer() {
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
             if (data.fatal) { 
-              setError("خطأ في تشغيل الرابط (CORS/Forbidden)."); 
+              setError("خطأ في تشغيل الرابط المباشر. جرب سيرفر آخر."); 
               setLoading(false); 
             }
           });
