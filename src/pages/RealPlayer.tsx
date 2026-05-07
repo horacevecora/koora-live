@@ -231,14 +231,12 @@ export default function RealPlayer() {
 
   return (
     <div
-      dir="rtl"
       className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950
-                 flex flex-col items-center justify-center p-2 sm:p-4 font-sans relative overflow-hidden"
+                 flex flex-col items-center p-2 sm:p-4 font-sans relative overflow-hidden"
     >
-      {/* ── أزرار التحكم العلوية (مخفية/واضحة) ── */}
+      {/* ── أزرار التحكم العلوية ── */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 pointer-events-none">
         <div className="flex gap-6 items-center pointer-events-auto">
-          {/* زر الإعدادات - صغير جداً وشبه مخفي */}
           <button 
             onClick={handleSettingsClick}
             className="text-white/5 hover:text-white/10 transition-colors p-1"
@@ -246,7 +244,6 @@ export default function RealPlayer() {
             <Settings size={8} />
           </button>
           
-          {/* زر التكبير - واضح وكبير */}
           <button 
             onClick={toggleFullScreen}
             className="text-white/80 hover:text-white transition-all transform hover:scale-110 p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10"
@@ -257,13 +254,13 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* ── الغلاف الرئيسي (تم توسيعه) ── */}
+      {/* ── الغلاف الرئيسي (تم توسيعه لملء المساحة) ── */}
       <div
         id="main-player-wrapper"
         className={cn(
-          "w-full max-w-[95vw] lg:max-w-[85vw] xl:max-w-[1200px] rounded-2xl overflow-hidden",
+          "w-full max-w-[98vw] lg:max-w-[92vw] xl:max-w-[1400px] rounded-2xl overflow-hidden mt-4 sm:mt-8",
           "shadow-2xl shadow-indigo-500/10",
-          "border border-white/5 bg-black"
+          "border border-white/5 bg-black flex-grow flex flex-col"
         )}
       >
         {/* ── شريط الأزرار ── */}
@@ -274,6 +271,7 @@ export default function RealPlayer() {
           )}
           role="tablist"
           aria-label="قائمة السيرفرات"
+          dir="rtl"
         >
           {servers.map((srv, i) => (
             <button
@@ -282,7 +280,7 @@ export default function RealPlayer() {
               aria-selected={i === activeIndex}
               onClick={() => handleBtnClick(i)}
               className={cn(
-                "flex-1 min-w-[100px] px-4 py-3 sm:py-3.5 text-sm sm:text-base font-semibold",
+                "flex-1 min-w-[100px] px-4 py-3 sm:py-4 text-sm sm:text-base font-semibold",
                 "transition-all duration-300 ease-out",
                 "border-l border-white/5 last:border-l-0",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-inset",
@@ -305,7 +303,7 @@ export default function RealPlayer() {
         </nav>
 
         {/* ── المشغّل ── */}
-        <div className="relative w-full aspect-video bg-black">
+        <div className="relative w-full flex-grow bg-black aspect-video lg:aspect-auto">
           <div
             ref={containerRef}
             className="absolute inset-0 flex items-center justify-center"
@@ -357,9 +355,10 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* ── التذييل ── */}
-      <footer className="mt-4 text-center text-[10px] text-slate-600">
-        Koora Live - Kora Online - كورة لايف - ماتش لايف
+      {/* ── التذييل (تم تعديله ليكون في الأسفل مع توزيع النص) ── */}
+      <footer className="w-full max-w-[1400px] mt-auto pt-8 pb-4 flex justify-between items-center text-[11px] sm:text-[13px] text-slate-500 px-4">
+        <span dir="ltr" className="font-medium tracking-wide">Koora Live - Kora Online</span>
+        <span dir="rtl" className="font-bold">كورة لايف - ماتش لايف</span>
       </footer>
 
       {/* ── تخصيص Plyr CSS عبر متغيرات ── */}
@@ -392,6 +391,7 @@ export default function RealPlayer() {
           width: 100vw;
           height: 100vh;
           border-radius: 0;
+          margin: 0;
         }
         #main-player-wrapper:fullscreen .aspect-video {
           aspect-ratio: auto;
