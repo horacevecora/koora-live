@@ -116,8 +116,14 @@ export default function RealPlayer() {
 
       const url = server.url.trim();
 
-      /* 1. دعم روابط MPEG-TS (مثل الرابط الذي أرسلته) */
-      if (url.includes(".ts") || url.includes("extension=ts")) {
+      // التحقق مما إذا كان الرابط يبدو كرابط IPTV (يحتوي على بورت أو أرقام متسلسلة)
+      const isIPTV = (url.includes(":") && url.split(":").length > 2) || 
+                     (url.match(/\/\d+\/\d+\/\d+$/)) ||
+                     url.includes(".ts") || 
+                     url.includes("extension=ts");
+
+      /* 1. دعم روابط MPEG-TS و IPTV المباشرة */
+      if (isIPTV && !url.includes(".m3u8") && !url.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.className = "w-full h-full";
@@ -125,7 +131,7 @@ export default function RealPlayer() {
 
         if (mpegts.getFeatureList().mseLivePlayback) {
           const player = mpegts.createPlayer({
-            type: 'mse', // أو 'mpegts'
+            type: 'mse',
             isLive: true,
             url: url
           });
@@ -141,7 +147,7 @@ export default function RealPlayer() {
           plyrRef.current = plyr;
           setLoading(false);
         } else {
-          setError("المتصفح لا يدعم تشغيل روابط TS المباشرة.");
+          setError("المتصفح لا يدعم تشغيل روابط IPTV المباشرة.");
           setLoading(false);
         }
         return;
