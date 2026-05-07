@@ -157,12 +157,13 @@ export default function RealPlayer() {
 
       if (dmId) {
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1&mute=1&api=postMessage&id=player&syndication=LR`;
+        // استخدام مشغل geo.dailymotion لتخطي بعض القيود
+        ifr.src = `https://geo.dailymotion.com/player.html?video=${dmId}&autoplay=true&mute=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
         ifr.allowFullscreen = true;
-        ifr.allow = "autoplay; fullscreen; picture-in-picture";
+        ifr.allow = "autoplay; fullscreen; picture-in-picture; encrypted-media";
         container.appendChild(ifr);
         setShowUnmuteHint(true);
         setLoading(false);
@@ -227,14 +228,18 @@ export default function RealPlayer() {
       }
 
       /* 3. IFRAME عام */
+      const isKnownPlatform = url.includes("dailymotion") || url.includes("youtube") || url.includes("facebook") || url.includes("twitch");
+      
       if (url.includes("<iframe")) {
-        container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
+        // لا نضع no-referrer للمنصات المعروفة لأنها تحتاج لمعرفة النطاق لتعمل
+        const refPolicy = isKnownPlatform ? '' : 'referrerpolicy="no-referrer"';
+        container.innerHTML = url.replace("<iframe", `<iframe ${refPolicy} allowfullscreen`);
         const ifr = container.querySelector("iframe");
         if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
         const ifr = document.createElement("iframe");
         ifr.src = url;
-        ifr.setAttribute("referrerpolicy", "no-referrer");
+        if (!isKnownPlatform) ifr.setAttribute("referrerpolicy", "no-referrer");
         ifr.allowFullscreen = true;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
