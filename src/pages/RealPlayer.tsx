@@ -34,6 +34,7 @@ export default function RealPlayer() {
 
   /* ---- إدارة سياسة المرجع (Referrer Policy) ---- */
   useEffect(() => {
+    // إضافة الميتا تاج للرأس لمنع إرسال المرجع نهائياً
     const meta = document.createElement('meta');
     meta.name = "referrer";
     meta.content = "no-referrer";
@@ -83,12 +84,6 @@ export default function RealPlayer() {
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
-  const getDailymotionId = (url: string) => {
-    // دعم روابط cdndirector المباشرة وروابط dailymotion العادية
-    const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video|\/cdn\/live\/video\/)|\/dai\.ly|cdndirector\.dailymotion\.com\/cdn\/live\/video\/)([a-zA-Z0-9]+)/);
-    return match ? match[1] : null;
-  };
-
   const getTwitchChannel = (url: string) => {
     const match = url.match(/(?:twitch\.tv\/)([a-zA-Z0-9_]+)/);
     return match ? match[1] : null;
@@ -107,23 +102,6 @@ export default function RealPlayer() {
     return url.includes("facebook.com") || url.includes("fb.watch");
   };
 
-  const loadDailymotionIframe = (id: string) => {
-    const container = containerRef.current;
-    if (!container) return;
-    container.innerHTML = "";
-    const ifr = document.createElement("iframe");
-    // استخدام مشغل geo الرسمي لتجاوز قيود CORS و 403
-    ifr.src = `https://geo.dailymotion.com/player.html?video=${id}&autoplay=true&mute=true`;
-    ifr.style.width = "100%";
-    ifr.style.height = "100%";
-    ifr.style.border = "none";
-    ifr.allowFullscreen = true;
-    ifr.allow = "autoplay; fullscreen; picture-in-picture; encrypted-media";
-    container.appendChild(ifr);
-    setShowUnmuteHint(true);
-    setLoading(false);
-  };
-
   const buildPlayer = useCallback(
     (server: Server) => {
       const container = containerRef.current;
@@ -136,18 +114,12 @@ export default function RealPlayer() {
       setShowUnmuteHint(false);
 
       const url = server.url.trim();
-      const dmId = getDailymotionId(url);
 
-      // إذا كان الرابط من نوع cdndirector أو dailymotion، نستخدم المعرف فوراً
-      if (dmId) {
-        loadDailymotionIframe(dmId);
-        return;
-      }
-
-      /* 1. روابط M3U8 المباشرة (لغير Dailymotion) */
-      if (server.type === "m3u8" || url.includes(".m3u8")) {
+      /* 1. الأولوية لروابط M3U8 (بما فيها cdndirector) */
+      if (url.includes(".m3u8") || server.type === "m3u8") {
         const video = document.createElement("video");
         video.playsInline = true;
+        // إجبار الفيديو على عدم إرسال مرجع
         video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
         container.appendChild(video);
@@ -161,7 +133,10 @@ export default function RealPlayer() {
 
         if (Hls.isSupported()) {
           const hls = new Hls({ 
-            xhrSetup: (xhr) => { xhr.withCredentials = false; },
+            xhrSetup: (xhr) => { 
+              // التأكد من عدم إرسال أي بيانات تعريفية قد تسبب 403
+              xhr.withCredentials = false; 
+            },
             enableWorker: true,
             lowLatencyMode: true
           });
@@ -171,7 +146,7 @@ export default function RealPlayer() {
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
             if (data.fatal) { 
-              setError("خطأ في تشغيل الرابط المباشر. جرب سيرفر آخر."); 
+              setError("خطأ في تشغيل الرابط (403 Forbidden). تأكد من صلاحية الرابط."); 
               setLoading(false); 
             }
           });
@@ -247,12 +222,13 @@ export default function RealPlayer() {
 
       /* 3. IFRAME عام */
       if (url.includes("<iframe")) {
-        container.innerHTML = url.replace("<iframe", `<iframe allowfullscreen`);
+        container.innerHTML = url.replace("<iframe", `<iframe referrerpolicy="no-referrer" allowfullscreen`);
         const ifr = container.querySelector("iframe");
         if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
         const ifr = document.createElement("iframe");
         ifr.src = url;
+        ifr.setAttribute("referrerpolicy", "no-referrer");
         ifr.allowFullscreen = true;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
