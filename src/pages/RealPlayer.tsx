@@ -86,10 +86,10 @@ export default function RealPlayer() {
         const video = document.createElement("video");
         video.playsInline = true;
         video.setAttribute("referrerpolicy", "no-referrer");
-        video.className = "w-full h-full";
+        video.className = "w-full h-full object-fill"; // تغيير هنا لملء المساحة
         container.appendChild(video);
 
-        // تهيئة Plyr أولاً كما في الكود المرفق
+        // تهيئة Plyr
         const plyr = new Plyr(video, {
           controls: [
             "play-large", "play", "progress", "current-time", 
@@ -125,19 +125,6 @@ export default function RealPlayer() {
           setLoading(false);
         }
 
-        // التحكم في تدوير الشاشة عند التكبير
-        plyr.on('enterfullscreen', () => {
-          if (window.screen.orientation && (window.screen.orientation as any).lock) {
-            (window.screen.orientation as any).lock('landscape').catch(() => {});
-          }
-        });
-        
-        plyr.on('exitfullscreen', () => {
-          if (window.screen.orientation && (window.screen.orientation as any).unlock) {
-            (window.screen.orientation as any).unlock();
-          }
-        });
-
         return;
       }
 
@@ -150,6 +137,7 @@ export default function RealPlayer() {
           ifr.style.width = "100%";
           ifr.style.height = "100%";
           ifr.style.border = "none";
+          ifr.style.objectFit = "fill"; // تغيير هنا لملء المساحة
         }
       } else {
         const ifr = document.createElement("iframe");
@@ -159,6 +147,7 @@ export default function RealPlayer() {
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
+        ifr.style.objectFit = "fill"; // تغيير هنا لملء المساحة
         container.appendChild(ifr);
       }
 
@@ -228,8 +217,8 @@ export default function RealPlayer() {
           ))}
         </nav>
 
-        <div className="relative w-full flex-grow bg-black aspect-video lg:aspect-auto">
-          <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
+        <div className="relative w-full flex-grow bg-black aspect-video">
+          <div ref={containerRef} className="absolute inset-0 flex items-center justify-center overflow-hidden" />
           
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
@@ -255,8 +244,9 @@ export default function RealPlayer() {
       <style>{`
         :root { --plyr-color-main: #6366f1; }
         .plyr { width: 100%; height: 100%; }
+        video, iframe { width: 100% !important; height: 100% !important; object-fit: fill !important; }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
-        #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); }
+        #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); aspect-ratio: auto; }
       `}</style>
     </div>
   );
