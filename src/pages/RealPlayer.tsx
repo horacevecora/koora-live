@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 // @ts-ignore
 import Plyr from "plyr";
 import Hls from "hls.js";
+// @ts-ignore
+import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
 import { Settings, Maximize, Volume2 } from "lucide-react";
@@ -11,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
 
-type ServerType = "iframe" | "m3u8" | "youtube" | "facebook" | "twitch" | "kick";
+type ServerType = "iframe" | "m3u8" | "ts" | "youtube" | "facebook" | "twitch" | "kick";
 
 interface Server {
   name: string;
@@ -24,6 +26,7 @@ export default function RealPlayer() {
   const containerRef = useRef<HTMLDivElement>(null);
   const plyrRef = useRef<Plyr | null>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const mpegtsRef = useRef<any>(null);
 
   const [servers, setServers] = useState<Server[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -63,6 +66,10 @@ export default function RealPlayer() {
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
+    }
+    if (mpegtsRef.current) {
+      mpegtsRef.current.destroy();
+      mpegtsRef.current = null;
     }
     if (plyrRef.current) {
       plyrRef.current.destroy();
@@ -109,7 +116,38 @@ export default function RealPlayer() {
 
       const url = server.url.trim();
 
-      /* 1. الأولوية القصوى لروابط M3U8 المباشرة */
+      /* 1. دعم روابط MPEG-TS (مثل الرابط الذي أرسلته) */
+      if (url.includes(".ts") || url.includes("extension=ts")) {
+        const video = document.createElement("video");
+        video.playsInline = true;
+        video.className = "w-full h-full";
+        container.appendChild(video);
+
+        if (mpegts.getFeatureList().mseLivePlayback) {
+          const player = mpegts.createPlayer({
+            type: 'mse', // أو 'mpegts'
+            isLive: true,
+            url: url
+          });
+          mpegtsRef.current = player;
+          player.attachMediaElement(video);
+          player.load();
+          player.play();
+
+          const plyr = new Plyr(video, {
+            controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
+            ratio: "16:9",
+          });
+          plyrRef.current = plyr;
+          setLoading(false);
+        } else {
+          setError("المتصفح لا يدعم تشغيل روابط TS المباشرة.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      /* 2. روابط M3U8 المباشرة */
       if (server.type === "m3u8" || url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
@@ -143,7 +181,7 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 2. روابط المنصات */
+      /* 3. روابط المنصات */
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
@@ -206,7 +244,7 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 3. IFRAME عام */
+      /* 4. IFRAME عام */
       if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
         const ifr = container.querySelector("iframe");
