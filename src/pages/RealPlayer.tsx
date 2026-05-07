@@ -69,18 +69,23 @@ export default function RealPlayer() {
     }
   }, []);
 
-  /* ---- استخراج الرابط المباشر من كيك (فقط لفيديوهات كيك) ---- */
+  /* ---- استخراج الرابط المباشر من كيك (في الخلفية) ---- */
   const tryExtractKickStream = async (url: string): Promise<string | null> => {
     try {
+      // محاولة الجلب في الخلفية
       const response = await fetch(url);
+      if (!response.ok) return null;
       const html = await response.text();
+      
+      // البحث عن النمط: "status":"public","source":"..."
       const regex = /"source"\s*:\s*"([^"]+)"/;
       const match = html.match(regex);
+      
       if (match && match[1]) {
-        return match[1].replace(/\\/g, '');
+        return match[1].replace(/\\/g, ''); // تنظيف الرابط
       }
     } catch (e) {
-      console.warn("Kick extraction failed", e);
+      console.warn("Background extraction failed (CORS or Network)", e);
     }
     return null;
   };
@@ -99,7 +104,7 @@ export default function RealPlayer() {
       let finalUrl = server.url;
       let isM3U8 = server.type === "m3u8" || server.url.includes(".m3u8");
 
-      // منطق خاص بـ Kick فقط
+      // منطق خاص بـ Kick: محاولة الاستخراج في الخلفية فقط
       if (server.url.includes("kick.com") && server.url.includes("/videos/")) {
         const extracted = await tryExtractKickStream(server.url);
         if (extracted) {
@@ -108,7 +113,7 @@ export default function RealPlayer() {
         }
       }
 
-      /* ── تشغيل M3U8 (HLS) ── */
+      /* ── الحالة 1: تشغيل M3U8 (سواء أصلي أو مستخرج من كيك) ── */
       if (isM3U8) {
         const video = document.createElement("video");
         video.playsInline = true;
@@ -137,22 +142,24 @@ export default function RealPlayer() {
         return;
       }
 
-      /* ── تشغيل IFRAME (فيسبوك، يوتيوب، سيرفرات خارجية) ── */
-      // نعود للطريقة الأصلية التي كانت تعمل
+      /* ── الحالة 2: النظام الأصلي (Iframe) لفيسبوك ويوتيوب والبقية ── */
       if (finalUrl.includes("<iframe")) {
-        container.innerHTML = finalUrl.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
+        // إذا كان الكود المدخل هو كود iframe كامل
+        container.innerHTML = finalUrl;
       } else {
+        // إذا كان رابطاً عادياً، نضعه في iframe بسيط
         const ifr = document.createElement("iframe");
         ifr.src = finalUrl;
-        ifr.setAttribute("referrerpolicy", "no-referrer");
-        ifr.allowFullscreen = true;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        // أضفنا هذه الخصائص لضمان عمل فيسبوك ويوتيوب
+        ifr.setAttribute("allow", "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share");
         container.appendChild(ifr);
       }
 
-      // إخفاء التحميل بعد فترة قصيرة للأيفريم
+      // إخفاء شاشة التحميل للأيفريم
       setTimeout(() => setLoading(false), 1000);
     },
     [destroy]
