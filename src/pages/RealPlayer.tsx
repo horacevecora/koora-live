@@ -82,6 +82,91 @@ export default function RealPlayer() {
   };
 
   const getKickInfo = (url: string) => {
+<dyad-write path="src/pages/RealPlayer.tsx" description="تعديل نسبة القص الرقمي لروابط يوتيوب لتصبح 20% بدلاً من 25%">
+"use client";
+
+import React, { useEffect, useRef, useState, useCallback } from "react";
+// @ts-ignore
+import Plyr from "plyr";
+import Hls from "hls.js";
+import "plyr/dist/plyr.css";
+import { cn } from "@/lib/utils";
+import { Settings, Maximize } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+
+/* ──────────────── النوعيات ──────────────── */
+
+type ServerType = "iframe" | "m3u8" | "youtube" | "facebook" | "twitch" | "kick";
+
+interface Server {
+  name: string;
+  url: string;
+  type: ServerType;
+}
+
+export default function RealPlayer() {
+  const navigate = useNavigate();
+  const containerRef = useRef<HTMLDivElement>(null);
+  const plyrRef = useRef<Plyr | null>(null);
+  const hlsRef = useRef<Hls | null>(null);
+
+  const [servers, setServers] = useState<Server[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [clickCount, setClickCount] = useState(0);
+
+  /* ---- تحميل السيرفرات من localStorage ---- */
+  useEffect(() => {
+    const saved = localStorage.getItem('player_servers');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setServers(parsed);
+      if (parsed.length > 0) {
+        buildPlayer(parsed[0]);
+      }
+    } else {
+      const defaultServers: Server[] = [
+        {
+          name: "سيرفر 1 – beIN HD1",
+          url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1",
+          type: "iframe",
+        }
+      ];
+      setServers(defaultServers);
+      buildPlayer(defaultServers[0]);
+    }
+
+    return () => {
+      destroy();
+    };
+  }, []);
+
+  /* ---- تنظيف المشغّل القديم ---- */
+  const destroy = useCallback(() => {
+    if (hlsRef.current) {
+      hlsRef.current.destroy();
+      hlsRef.current = null;
+    }
+    if (plyrRef.current) {
+      plyrRef.current.destroy();
+      plyrRef.current = null;
+    }
+  }, []);
+
+  /* ---- استخراج المعرفات من الروابط ---- */
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const getTwitchChannel = (url: string) => {
+    const match = url.match(/(?:twitch\.tv\/)([a-zA-Z0-9_]+)/);
+    return match ? match[1] : null;
+  };
+
+  const getKickInfo = (url: string) => {
     if (url.includes('.m3u8')) return null;
     const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
     if (videoMatch) return { type: 'video', id: videoMatch[1] };
@@ -192,7 +277,6 @@ export default function RealPlayer() {
         wrapper.className = "youtube-crop-wrapper";
         
         const ifr = document.createElement("iframe");
-        // modestbranding=1 و rel=0 و iv_load_policy=3 لتقليل العناصر
         ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&iv_load_policy=3&controls=1`;
         ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         ifr.allowFullscreen = true;
@@ -307,7 +391,7 @@ export default function RealPlayer() {
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
         #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); }
         
-        /* تنسيق القص الرقمي ليوتيوب - تم زيادة القوة لـ 25% */
+        /* تنسيق القص الرقمي ليوتيوب - تم ضبط القوة لـ 20% */
         .youtube-crop-wrapper {
           position: relative;
           width: 100%;
@@ -317,10 +401,10 @@ export default function RealPlayer() {
         }
         .youtube-crop-wrapper iframe {
           position: absolute;
-          width: 125%;
-          height: 125%;
-          top: -12.5%;
-          left: -12.5%;
+          width: 120%;
+          height: 120%;
+          top: -10%;
+          left: -10%;
           border: none;
         }
       `}</style>
