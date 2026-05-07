@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, Settings, X } from "lucide-react";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, Settings, X, Check, RotateCcw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess } from "@/utils/toast";
 
@@ -19,6 +19,7 @@ const AdminPanel = () => {
   const [servers, setServers] = useState<Server[]>([]);
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('player_servers');
@@ -36,19 +37,46 @@ const AdminPanel = () => {
     localStorage.setItem('player_servers', JSON.stringify(updated));
   };
 
-  const addChannel = () => {
+  const handleSubmit = () => {
     if (!newName || !newUrl) return;
     const type = newUrl.includes('.m3u8') ? 'm3u8' : 'iframe';
-    const updated = [...servers, { name: newName, url: newUrl, type }];
-    saveServers(updated);
+    
+    if (editingIndex !== null) {
+      // تحديث قناة موجودة
+      const updated = [...servers];
+      updated[editingIndex] = { name: newName, url: newUrl, type };
+      saveServers(updated);
+      setEditingIndex(null);
+      showSuccess("تم تحديث القناة بنجاح");
+    } else {
+      // إضافة قناة جديدة
+      const updated = [...servers, { name: newName, url: newUrl, type }];
+      saveServers(updated);
+      showSuccess("تمت إضافة القناة بنجاح");
+    }
+    
     setNewName("");
     setNewUrl("");
-    showSuccess("تمت إضافة القناة بنجاح");
+  };
+
+  const startEdit = (index: number) => {
+    const server = servers[index];
+    setNewName(server.name);
+    setNewUrl(server.url);
+    setEditingIndex(index);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const cancelEdit = () => {
+    setEditingIndex(null);
+    setNewName("");
+    setNewUrl("");
   };
 
   const deleteChannel = (index: number) => {
     const updated = servers.filter((_, i) => i !== index);
     saveServers(updated);
+    if (editingIndex === index) cancelEdit();
   };
 
   const moveChannel = (index: number, direction: 'up' | 'down') => {
@@ -57,6 +85,9 @@ const AdminPanel = () => {
     if (target < 0 || target >= updated.length) return;
     [updated[index], updated[target]] = [updated[target], updated[index]];
     saveServers(updated);
+    // تحديث مؤشر التعديل إذا لزم الأمر
+    if (editingIndex === index) setEditingIndex(target);
+    else if (editingIndex === target) setEditingIndex(index);
   };
 
   return (
@@ -71,27 +102,39 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
+        <Card className={`bg-[#0f172a]/50 border-slate-800 text-white transition-all duration-500 ${editingIndex !== null ? 'ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/20' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-lg flex items-center gap-2">
-              إضافة قناة <Plus size={18} className="text-emerald-500" />
+              {editingIndex !== null ? (
+                <>تعديل القناة <Edit2 size={18} className="text-indigo-400" /></>
+              ) : (
+                <>إضافة قناة <Plus size={18} className="text-emerald-500" /></>
+              )}
             </CardTitle>
+            {editingIndex !== null && (
+              <Button variant="ghost" size="sm" onClick={cancelEdit} className="text-slate-400 hover:text-white">
+                <RotateCcw size={16} className="ml-2" /> إلغاء التعديل
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="flex flex-col md:flex-row gap-4">
             <Input 
               placeholder="اسم القناة" 
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              className="bg-slate-900 border-slate-700 text-white"
+              className="bg-slate-900 border-slate-700 text-white focus:ring-indigo-500"
             />
             <Input 
               placeholder="رابط الـ iframe أو m3u8" 
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
-              className="bg-slate-900 border-slate-700 text-white"
+              className="bg-slate-900 border-slate-700 text-white focus:ring-indigo-500"
             />
-            <Button onClick={addChannel} className="bg-emerald-600 hover:bg-emerald-700 text-white min-w-[100px]">
-              + إضافة
+            <Button 
+              onClick={handleSubmit} 
+              className={`${editingIndex !== null ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white min-w-[120px] font-bold`}
+            >
+              {editingIndex !== null ? <><Check size={18} className="ml-2" /> تحديث</> : <><Plus size={18} className="ml-2" /> إضافة</>}
             </Button>
           </CardContent>
         </Card>
@@ -104,39 +147,45 @@ const AdminPanel = () => {
           </CardHeader>
           <CardContent className="space-y-3">
             {servers.map((server, index) => (
-              <div key={index} className="flex items-center justify-between bg-slate-900/80 p-4 rounded-xl border border-slate-800 group">
+              <div 
+                key={index} 
+                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${editingIndex === index ? 'bg-indigo-900/20 border-indigo-500/50' : 'bg-slate-900/80 border-slate-800'}`}
+              >
                 <div className="flex items-center gap-4">
-                  <div className="bg-red-900/30 text-red-500 w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${editingIndex === index ? 'bg-indigo-600 text-white' : 'bg-red-900/30 text-red-500'}`}>
                     {index + 1}
                   </div>
-                  <div>
-                    <div className="font-bold">{server.name}</div>
-                    <div className="text-xs text-slate-500 truncate max-w-[200px] md:max-w-md">{server.url}</div>
+                  <div className="overflow-hidden">
+                    <div className="font-bold truncate">{server.name}</div>
+                    <div className="text-xs text-slate-500 truncate max-w-[150px] md:max-w-md">{server.url}</div>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => deleteChannel(index)} className="p-2 text-slate-500 hover:text-red-500 transition-colors">
+                <div className="flex items-center gap-1 md:gap-2 shrink-0">
+                  <button onClick={() => deleteChannel(index)} className="p-2 text-slate-500 hover:text-red-500 transition-colors" title="حذف">
                     <Trash2 size={18} />
                   </button>
-                  <button className="p-2 text-slate-500 hover:text-indigo-400 transition-colors">
+                  <button onClick={() => startEdit(index)} className={`p-2 transition-colors ${editingIndex === index ? 'text-indigo-400' : 'text-slate-500 hover:text-indigo-400'}`} title="تعديل">
                     <Edit2 size={18} />
                   </button>
-                  <button onClick={() => moveChannel(index, 'down')} className="p-2 text-slate-500 hover:text-white transition-colors">
+                  <button onClick={() => moveChannel(index, 'down')} className="p-2 text-slate-500 hover:text-white transition-colors" title="تحريك لأسفل">
                     <ChevronDown size={18} />
                   </button>
-                  <button onClick={() => moveChannel(index, 'up')} className="p-2 text-slate-500 hover:text-white transition-colors">
+                  <button onClick={() => moveChannel(index, 'up')} className="p-2 text-slate-500 hover:text-white transition-colors" title="تحريك لأعلى">
                     <ChevronUp size={18} />
                   </button>
                 </div>
               </div>
             ))}
+            {servers.length === 0 && (
+              <div className="text-center py-10 text-slate-500 italic">لا توجد قنوات مضافة حالياً</div>
+            )}
           </CardContent>
         </Card>
 
         <div className="flex justify-center pt-10">
           <Button 
             onClick={() => navigate('/real.html')}
-            className="bg-red-600 hover:bg-red-700 text-white px-10 py-6 rounded-2xl text-lg font-bold flex items-center gap-2"
+            className="bg-red-600 hover:bg-red-700 text-white px-10 py-6 rounded-2xl text-lg font-bold flex items-center gap-2 shadow-xl shadow-red-900/20"
           >
             <X size={20} />
             إغلاق التحكم والعودة للمشاهدة
