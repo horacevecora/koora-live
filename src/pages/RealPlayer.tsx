@@ -317,11 +317,10 @@ export default function RealPlayer() {
       </div>
 
       <footer className="w-full max-w-[950px] mt-auto pt-8 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
-        <div className="flex justify-between w-full items-center">
-          <span dir="ltr">Koora Live - Kora Online</span>
-          <span dir="rtl">كورة لايف - ماتش لايف</span>
+        <div className="flex justify-between w-full items-center border-t border-white/5 pt-4">
+          <span dir="ltr" className="font-bold tracking-tight">Koora Live - Kora Online</span>
+          <span dir="rtl" className="font-bold">كورة لايف - ماتش لايف</span>
         </div>
-        <p className="opacity-30 text-[9px] uppercase tracking-widest">Protected by Karim Player Pro</p>
       </footer>
 
       <style>{`
