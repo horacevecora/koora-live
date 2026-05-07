@@ -82,15 +82,11 @@ export default function RealPlayer() {
   };
 
   const getKickInfo = (url: string) => {
-    // إذا كان الرابط يحتوي على manifest أو m3u8، نتجاهله هنا ليعالج كمشغل مباشر
     if (url.includes('.m3u8')) return null;
-
     const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
     if (videoMatch) return { type: 'video', id: videoMatch[1] };
-    
     const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
     if (channelMatch && channelMatch[1] !== 'video' && channelMatch[1] !== 'api') return { type: 'channel', id: channelMatch[1] };
-    
     return null;
   };
 
@@ -127,21 +123,13 @@ export default function RealPlayer() {
         plyrRef.current = plyr;
 
         if (Hls.isSupported()) {
-          const hls = new Hls({
-            xhrSetup: (xhr) => {
-              xhr.withCredentials = false;
-            }
-          });
+          const hls = new Hls({ xhrSetup: (xhr) => { xhr.withCredentials = false; } });
           hlsRef.current = hls;
           hls.loadSource(url);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) { 
-              console.error("HLS Fatal Error:", data);
-              setError("تعذّر تشغيل البث المباشر."); 
-              setLoading(false); 
-            }
+            if (data.fatal) { setError("تعذّر تشغيل البث المباشر."); setLoading(false); }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = url;
@@ -153,7 +141,7 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 2. روابط المنصات (YouTube, Twitch, Kick, Facebook) */
+      /* 2. روابط المنصات */
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
@@ -200,19 +188,25 @@ export default function RealPlayer() {
       }
 
       if (ytId) {
+        // تقنية القص الرقمي ليوتيوب
+        const wrapper = document.createElement("div");
+        wrapper.className = "youtube-crop-wrapper";
+        
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1`;
+        // modestbranding=1 يخفي شعار يوتيوب من شريط التحكم
+        // rel=0 يمنع اقتراح فيديوهات من قنوات أخرى
+        // iv_load_policy=3 يخفي التعليقات التوضيحية
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&iv_load_policy=3&controls=1`;
         ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         ifr.allowFullscreen = true;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        container.appendChild(ifr);
+        
+        wrapper.appendChild(ifr);
+        container.appendChild(wrapper);
         setTimeout(() => setLoading(false), 1000);
         return;
       }
 
-      /* 3. IFRAME عام أو روابط أخرى */
+      /* 3. IFRAME عام */
       if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
         const ifr = container.querySelector("iframe");
@@ -315,6 +309,24 @@ export default function RealPlayer() {
         .plyr { width: 100%; height: 100%; }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
         #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); }
+        
+        /* تنسيق القص الرقمي ليوتيوب */
+        .youtube-crop-wrapper {
+          position: relative;
+          width: 100%;
+          height: 100%;
+          overflow: hidden;
+          background: #000;
+        }
+        .youtube-crop-wrapper iframe {
+          position: absolute;
+          /* تكبير الفيديو بنسبة 15% لقص الأطراف */
+          width: 115%;
+          height: 115%;
+          top: -7.5%;
+          left: -7.5%;
+          border: none;
+        }
       `}</style>
     </div>
   );
