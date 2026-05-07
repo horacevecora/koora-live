@@ -78,7 +78,8 @@ export default function RealPlayer() {
   };
 
   const getDailymotionId = (url: string) => {
-    const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video)|\/dai\.ly)\/([a-zA-Z0-9]+)/);
+    // تحسين استخراج المعرف ليشمل روابط CDN
+    const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video|\/cdn\/live\/video)|\/dai\.ly)\/([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
   };
 
@@ -118,7 +119,7 @@ export default function RealPlayer() {
       if (server.type === "m3u8" || url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
-        video.setAttribute("referrerpolicy", "no-referrer");
+        // إزالة no-referrer للسماح بمرور التوكنات في روابط m3u8
         video.className = "w-full h-full";
         container.appendChild(video);
 
@@ -130,13 +131,30 @@ export default function RealPlayer() {
         plyrRef.current = plyr;
 
         if (Hls.isSupported()) {
-          const hls = new Hls({ xhrSetup: (xhr) => { xhr.withCredentials = false; } });
+          const hls = new Hls({ 
+            xhrSetup: (xhr) => { 
+              xhr.withCredentials = false; 
+            },
+            // تحسين إعدادات التحميل للروابط التي تحتوي على توكنات
+            enableWorker: true,
+            lowLatencyMode: true
+          });
           hlsRef.current = hls;
           hls.loadSource(url);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) { setError("تعذّر تشغيل البث المباشر."); setLoading(false); }
+            if (data.fatal) { 
+              // إذا فشل الرابط المباشر وكان من Dailymotion، نحاول تشغيله كـ iframe
+              const dmId = getDailymotionId(url);
+              if (dmId) {
+                console.log("HLS failed, trying Dailymotion Iframe fallback...");
+                loadDailymotionIframe(dmId);
+              } else {
+                setError("تعذّر تشغيل البث المباشر (CORS Error)."); 
+                setLoading(false); 
+              }
+            }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = url;
@@ -148,17 +166,10 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 2. روابط المنصات */
-      const ytId = getYouTubeId(url);
-      const dmId = getDailymotionId(url);
-      const twitchChannel = getTwitchChannel(url);
-      const kickInfo = getKickInfo(url);
-      const isFB = isFacebookUrl(url);
-
-      if (dmId) {
+      const loadDailymotionIframe = (id: string) => {
+        container.innerHTML = "";
         const ifr = document.createElement("iframe");
-        // استخدام مشغل geo.dailymotion لتخطي بعض القيود
-        ifr.src = `https://geo.dailymotion.com/player.html?video=${dmId}&autoplay=true&mute=true`;
+        ifr.src = `https://geo.dailymotion.com/player.html?video=${id}&autoplay=true&mute=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -167,6 +178,17 @@ export default function RealPlayer() {
         container.appendChild(ifr);
         setShowUnmuteHint(true);
         setLoading(false);
+      };
+
+      /* 2. روابط المنصات */
+      const ytId = getYouTubeId(url);
+      const dmId = getDailymotionId(url);
+      const twitchChannel = getTwitchChannel(url);
+      const kickInfo = getKickInfo(url);
+      const isFB = isFacebookUrl(url);
+
+      if (dmId) {
+        loadDailymotionIframe(dmId);
         return;
       }
 
@@ -231,7 +253,6 @@ export default function RealPlayer() {
       const isKnownPlatform = url.includes("dailymotion") || url.includes("youtube") || url.includes("facebook") || url.includes("twitch");
       
       if (url.includes("<iframe")) {
-        // لا نضع no-referrer للمنصات المعروفة لأنها تحتاج لمعرفة النطاق لتعمل
         const refPolicy = isKnownPlatform ? '' : 'referrerpolicy="no-referrer"';
         container.innerHTML = url.replace("<iframe", `<iframe ${refPolicy} allowfullscreen`);
         const ifr = container.querySelector("iframe");
