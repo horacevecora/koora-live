@@ -188,14 +188,11 @@ export default function RealPlayer() {
       }
 
       if (ytId) {
-        // تقنية القص الرقمي ليوتيوب
         const wrapper = document.createElement("div");
         wrapper.className = "youtube-crop-wrapper";
         
         const ifr = document.createElement("iframe");
-        // modestbranding=1 يخفي شعار يوتيوب من شريط التحكم
-        // rel=0 يمنع اقتراح فيديوهات من قنوات أخرى
-        // iv_load_policy=3 يخفي التعليقات التوضيحية
+        // modestbranding=1 و rel=0 و iv_load_policy=3 لتقليل العناصر
         ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&iv_load_policy=3&controls=1`;
         ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         ifr.allowFullscreen = true;
@@ -310,7 +307,7 @@ export default function RealPlayer() {
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
         #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); }
         
-        /* تنسيق القص الرقمي ليوتيوب */
+        /* تنسيق القص الرقمي ليوتيوب - تم زيادة القوة لـ 25% */
         .youtube-crop-wrapper {
           position: relative;
           width: 100%;
@@ -320,11 +317,10 @@ export default function RealPlayer() {
         }
         .youtube-crop-wrapper iframe {
           position: absolute;
-          /* تكبير الفيديو بنسبة 15% لقص الأطراف */
-          width: 115%;
-          height: 115%;
-          top: -7.5%;
-          left: -7.5%;
+          width: 125%;
+          height: 125%;
+          top: -12.5%;
+          left: -12.5%;
           border: none;
         }
       `}</style>
