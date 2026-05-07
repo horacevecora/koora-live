@@ -252,7 +252,7 @@ export default function RealPlayer() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-8 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
+    <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       <div className="absolute top-4 left-12 right-12 flex justify-between items-center z-50 pointer-events-none">
         <div className="flex gap-6 items-center pointer-events-auto">
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
