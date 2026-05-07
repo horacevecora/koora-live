@@ -6,7 +6,7 @@ import Plyr from "plyr";
 import Hls from "hls.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, RefreshCw } from "lucide-react";
+import { Settings, Maximize } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
@@ -84,42 +84,32 @@ export default function RealPlayer() {
   const getKickInfo = (url: string) => {
     if (!url) return null;
     const cleanUrl = url.split('?')[0].split('#')[0];
+
+    // 1. مقطع (Clip): kick.com/clip/ID
+    const clipMatch = cleanUrl.match(/kick\.com\/clip\/([a-zA-Z0-9_-]+)/i);
+    if (clipMatch) return { type: 'clip', id: clipMatch[1] };
+
+    // 2. فيديو: kick.com/username/videos/ID أو kick.com/video/ID
     const videoMatch = cleanUrl.match(/kick\.com\/(?:[^\/]+\/videos\/|video\/)([a-zA-Z0-9-]+)/i);
-    if (videoMatch) return { type: 'video', id: videoMatch[1], fullUrl: cleanUrl };
+    if (videoMatch) return { type: 'video', id: videoMatch[1] };
+    
+    // 3. قناة: kick.com/username
     const channelMatch = cleanUrl.match(/kick\.com\/([a-zA-Z0-9_]+)/i);
-    if (channelMatch && !['video', 'videos', 'clip'].includes(channelMatch[1].toLowerCase())) {
-      return { type: 'channel', id: channelMatch[1], fullUrl: cleanUrl };
+    if (channelMatch) {
+      const slug = channelMatch[1].toLowerCase();
+      if (!['video', 'videos', 'clip'].includes(slug)) return { type: 'channel', id: channelMatch[1] };
     }
+    
     return null;
   };
 
-  /* ---- وظيفة استخراج رابط m3u8 من كيك ---- */
-  const extractKickM3u8 = async (url: string): Promise<string | null> => {
-    try {
-      // استخدام بروكسي لتجاوز CORS
-      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
-      const response = await fetch(proxyUrl);
-      const data = await response.json();
-      const html = data.contents;
-
-      // البحث عن النمط المطلوب: \"status\":\"public\",\"source\":\"رابط.m3u8\"
-      const regex = /\\"status\\":\\"public\\",\\"source\\":\\"([^\\"]+)\\"/;
-      const match = html.match(regex);
-      
-      if (match && match[1]) {
-        // تنظيف الرابط من الـ backslashes
-        return match[1].replace(/\\/g, '');
-      }
-      return null;
-    } catch (err) {
-      console.error("Extraction failed:", err);
-      return null;
-    }
+  const isFacebookUrl = (url: string) => {
+    return url.includes("facebook.com") || url.includes("fb.watch");
   };
 
   /* ---- بناء المشغّل حسب نوع السيرفر ---- */
   const buildPlayer = useCallback(
-    async (server: Server) => {
+    (server: Server) => {
       const container = containerRef.current;
       if (!container) return;
 
@@ -128,112 +118,172 @@ export default function RealPlayer() {
       setLoading(true);
       setError(null);
 
-      const kickInfo = getKickInfo(server.url);
-
-      /* ── منطق كيك المطور (استخراج m3u8) ── */
-      if (kickInfo && kickInfo.type === 'video') {
-        const m3u8Url = await extractKickM3u8(kickInfo.fullUrl);
-        if (m3u8Url) {
-          // تشغيل الرابط المستخرج كمشغل m3u8
-          playM3u8(m3u8Url, container);
-          return;
-        }
-        // إذا فشل الاستخراج، نعود للـ iframe كحل أخير
-      }
-
-      /* ── بقية الأنواع ── */
       const ytId = getYouTubeId(server.url);
       const twitchChannel = getTwitchChannel(server.url);
-      const isFB = server.url.includes("facebook.com") || server.url.includes("fb.watch");
+      const kickInfo = getKickInfo(server.url);
+      const isFB = isFacebookUrl(server.url);
 
-      if (kickInfo && kickInfo.type === 'channel') {
+      /* ── KICK ── */
+      if (kickInfo || server.type === "kick") {
         const ifr = document.createElement("iframe");
-        ifr.src = `https://player.kick.com/${kickInfo.id}?autoplay=true`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
+        const info = kickInfo || { type: 'channel', id: server.url };
+        const domain = window.location.hostname;
+        
+        let embedUrl = "";
+        if (info.type === 'video') {
+          embedUrl = `https://player.kick.com/video/${info.id}?autoplay=true`;
+        } else if (info.type === 'clip') {
+          embedUrl = `https://kick.com/embed/clip/${info.id}`;
+        } else {
+          embedUrl = `https://player.kick.com/${info.id}?autoplay=true`;
+        }
+        
+        ifr.src = embedUrl;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
         ifr.allowFullscreen = true;
-        ifr.setAttribute("allow", "autoplay; fullscreen");
+        // إضافة صلاحيات التضمين الكاملة مع تحديد المصدر
+        ifr.setAttribute("allow", "autoplay; fullscreen; picture-in-picture; encrypted-media; gyroscope; accelerometer; clipboard-write");
+        
         container.appendChild(ifr);
         setLoading(false);
-      } else if (twitchChannel) {
+        return;
+      }
+
+      /* ── TWITCH ── */
+      if (twitchChannel || server.type === "twitch") {
         const ifr = document.createElement("iframe");
-        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${window.location.hostname}&autoplay=true`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
+        const channel = twitchChannel || server.url;
+        const domain = window.location.hostname;
+        ifr.src = `https://player.twitch.tv/?channel=${channel}&parent=${domain}&autoplay=true&muted=false`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
         ifr.allowFullscreen = true;
         container.appendChild(ifr);
         setLoading(false);
-      } else if (ytId) {
+        return;
+      }
+
+      /* ── FACEBOOK ── */
+      if (isFB || server.type === "facebook") {
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.youtube.com/embed/${ytId}?autoplay=1`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
-        ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-        setLoading(false);
-      } else if (server.type === "m3u8" || server.url.includes(".m3u8")) {
-        playM3u8(server.url, container);
-      } else {
-        // Iframe الافتراضي
-        const ifr = document.createElement("iframe");
-        ifr.src = server.url;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
-        ifr.allowFullscreen = true;
+        const encodedUrl = encodeURIComponent(server.url);
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=auto&autoplay=1&mute=0`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
+        ifr.setAttribute("allowfullscreen", "true");
         container.appendChild(ifr);
         setTimeout(() => setLoading(false), 1500);
+        return;
       }
+
+      /* ── YOUTUBE ── */
+      if (ytId || server.type === "youtube") {
+        const ifr = document.createElement("iframe");
+        const id = ytId || server.url;
+        ifr.src = `https://www.youtube.com/embed/${id}?rel=0&modestbranding=1&playsinline=1&autoplay=1`;
+        ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        ifr.allowFullscreen = true;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        container.appendChild(ifr);
+        setTimeout(() => setLoading(false), 1000);
+        return;
+      }
+
+      /* ── M3U8 ── */
+      if (server.type === "m3u8" || server.url.includes(".m3u8")) {
+        const video = document.createElement("video");
+        video.playsInline = true;
+        video.setAttribute("referrerpolicy", "no-referrer");
+        video.className = "w-full h-full";
+        container.appendChild(video);
+
+        const plyr = new Plyr(video, {
+          controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
+          settings: ["quality", "speed"],
+          ratio: "16:9",
+        });
+        plyrRef.current = plyr;
+
+        if (Hls.isSupported()) {
+          const hls = new Hls();
+          hlsRef.current = hls;
+          hls.loadSource(server.url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
+          hls.on(Hls.Events.ERROR, (_, data) => {
+            if (data.fatal) { setError("تعذّر تشغيل البث."); setLoading(false); }
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = server.url;
+          video.addEventListener("loadedmetadata", () => setLoading(false));
+        } else {
+          setError("المتصفح لا يدعم m3u8.");
+          setLoading(false);
+        }
+        return;
+      }
+
+      /* ── IFRAME ── */
+      const url = server.url;
+      if (url.includes("<iframe")) {
+        container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
+        const ifr = container.querySelector("iframe");
+        if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
+      } else {
+        const ifr = document.createElement("iframe");
+        ifr.src = url;
+        ifr.setAttribute("referrerpolicy", "no-referrer");
+        ifr.allowFullscreen = true;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        container.appendChild(ifr);
+      }
+
+      setTimeout(() => setLoading(false), 1500);
     },
     [destroy]
   );
 
-  /* ---- وظيفة تشغيل m3u8 ---- */
-  const playM3u8 = (url: string, container: HTMLElement) => {
-    const video = document.createElement("video");
-    video.playsInline = true;
-    video.className = "w-full h-full";
-    container.appendChild(video);
+  /* ---- التبديل بين السيرفرات ---- */
+  const switchServer = useCallback(
+    (index: number) => {
+      if (servers[index]) {
+        setActiveIndex(index);
+        buildPlayer(servers[index]);
+      }
+    },
+    [buildPlayer, servers]
+  );
 
-    const plyr = new Plyr(video, {
-      controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
-      settings: ["quality", "speed"],
-    });
-    plyrRef.current = plyr;
-
-    if (Hls.isSupported()) {
-      const hls = new Hls();
-      hlsRef.current = hls;
-      hls.loadSource(url);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = url;
-      video.addEventListener("loadedmetadata", () => setLoading(false));
-    } else {
-      setError("المتصفح لا يدعم m3u8.");
-      setLoading(false);
-    }
+  const handleSettingsClick = () => {
+    const newCount = clickCount + 1;
+    if (newCount >= 3) { navigate('/admin'); } 
+    else { setClickCount(newCount); setTimeout(() => setClickCount(0), 2000); }
   };
 
-  const switchServer = (index: number) => {
-    setActiveIndex(index);
-    buildPlayer(servers[index]);
+  const toggleFullScreen = () => {
+    const elem = document.getElementById('main-player-wrapper');
+    if (!elem) return;
+    if (!document.fullscreenElement) { elem.requestFullscreen().catch(() => {}); } 
+    else { document.exitFullscreen(); }
   };
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center p-2 sm:p-4 font-sans relative overflow-hidden">
       <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 pointer-events-none">
         <div className="flex gap-6 items-center pointer-events-auto">
-          <button onClick={() => {
-            const newCount = clickCount + 1;
-            if (newCount >= 3) navigate('/admin');
-            else { setClickCount(newCount); setTimeout(() => setClickCount(0), 2000); }
-          }} className="text-white/5 hover:text-white/10 p-1">
+          <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
           </button>
-          <button onClick={() => {
-            const elem = document.getElementById('main-player-wrapper');
-            if (elem) {
-              if (!document.fullscreenElement) elem.requestFullscreen().catch(() => {});
-              else document.exitFullscreen();
-            }
-          }} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
+          <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
             <Maximize size={28} />
           </button>
         </div>
@@ -261,16 +311,14 @@ export default function RealPlayer() {
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-              <p className="mt-4 text-slate-300 text-sm">جارٍ استخراج البث وتشغيله...</p>
+              <p className="mt-4 text-slate-300 text-sm">جارٍ تحميل البث...</p>
             </div>
           )}
 
           {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
               <p className="text-red-400 font-bold mb-4">{error}</p>
-              <button onClick={() => switchServer(activeIndex)} className="px-6 py-2 bg-indigo-600 text-white rounded-lg flex items-center gap-2">
-                <RefreshCw size={18} /> إعادة المحاولة
-              </button>
+              <button onClick={() => switchServer(activeIndex)} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">إعادة المحاولة</button>
             </div>
           )}
         </div>
