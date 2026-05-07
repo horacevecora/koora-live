@@ -178,12 +178,17 @@ export default function RealPlayer() {
       if (isFB) {
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=auto&autoplay=1&mute=0`;
+        // استخدام رابط فيسبوك القياسي مع تفعيل التحكم الكامل
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
+        ifr.style.overflow = "hidden";
+        ifr.setAttribute("scrolling", "no");
+        ifr.setAttribute("frameborder", "0");
+        ifr.setAttribute("allowTransparency", "true");
+        ifr.setAttribute("allowFullScreen", "true");
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
-        ifr.setAttribute("allowfullscreen", "true");
         
         container.appendChild(ifr);
         setShowUnmuteHint(true);
@@ -280,7 +285,10 @@ export default function RealPlayer() {
           ))}
         </nav>
 
-        <div className="relative w-full flex-grow bg-black aspect-video lg:aspect-auto">
+        <div 
+          className="relative w-full flex-grow bg-black aspect-video lg:aspect-auto"
+          onClick={() => setShowUnmuteHint(false)}
+        >
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
           
           {loading && (
@@ -293,7 +301,7 @@ export default function RealPlayer() {
           {showUnmuteHint && !loading && (
             <div 
               className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer"
-              onClick={() => setShowUnmuteHint(false)}
+              onClick={(e) => { e.stopPropagation(); setShowUnmuteHint(false); }}
             >
               <Volume2 size={20} />
               <span className="font-bold text-sm">انقر على الفيديو لتشغيل الصوت</span>
