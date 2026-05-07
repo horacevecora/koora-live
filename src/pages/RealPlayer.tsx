@@ -212,7 +212,7 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      <div id="main-player-wrapper" className="w-full max-w-[1400px] rounded-2xl overflow-hidden mt-8 shadow-2xl border border-white/5 bg-black flex-grow flex flex-col">
+      <div id="main-player-wrapper" className="w-full max-w-[1100px] rounded-2xl overflow-hidden mt-8 shadow-2xl border border-white/5 bg-black flex-grow flex flex-col">
         <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5" dir="rtl">
           {servers.map((srv, i) => (
             <button
@@ -247,7 +247,7 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      <footer className="w-full max-w-[1400px] mt-auto pt-8 pb-4 flex justify-between items-center text-[11px] text-slate-500 px-4">
+      <footer className="w-full max-w-[1100px] mt-auto pt-8 pb-4 flex justify-between items-center text-[11px] text-slate-500 px-4">
         <span dir="ltr">Koora Live - Kora Online</span>
         <span dir="rtl">كورة لايف - ماتش لايف</span>
       </footer>
