@@ -264,7 +264,7 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* المشغل مع الإطار المضيء المطور - تم تقليل الظل الجانبي */}
+      {/* المشغل مع الإطار المضيء المطور */}
       <div 
         id="main-player-wrapper" 
         className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]"
@@ -275,10 +275,16 @@ export default function RealPlayer() {
               key={i}
               onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[100px] px-4 py-4 text-sm sm:text-base font-bold transition-all",
+                "flex-1 min-w-[120px] px-4 py-5 text-sm sm:text-base font-extrabold transition-all flex items-center justify-center gap-2 border-l border-white/5",
                 i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
+              {i === activeIndex && (
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                </span>
+              )}
               {srv.name}
             </button>
           ))}
@@ -293,7 +299,7 @@ export default function RealPlayer() {
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-              <p className="mt-4 text-slate-300 text-sm">جارٍ تحميل البث...</p>
+              <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ تحميل البث...</p>
             </div>
           )}
 
@@ -303,14 +309,14 @@ export default function RealPlayer() {
               onClick={(e) => { e.stopPropagation(); setShowUnmuteHint(false); }}
             >
               <Volume2 size={20} />
-              <span className="font-bold text-sm">انقر على الفيديو لتشغيل الصوت</span>
+              <span className="font-black text-sm">انقر على الفيديو لتشغيل الصوت</span>
             </div>
           )}
 
           {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
-              <p className="text-red-400 font-bold mb-4">{error}</p>
-              <button onClick={() => switchServer(activeIndex)} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">إعادة المحاولة</button>
+              <p className="text-red-400 font-black mb-4">{error}</p>
+              <button onClick={() => switchServer(activeIndex)} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold">إعادة المحاولة</button>
             </div>
           )}
         </div>
@@ -319,8 +325,8 @@ export default function RealPlayer() {
       {/* التذييل */}
       <footer className="w-full max-w-[1200px] mt-6 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
         <div className="flex justify-between w-full items-center opacity-40">
-          <span dir="ltr" className="font-bold tracking-tight">Koora Live - Kora Online</span>
-          <span dir="rtl" className="font-bold">كورة لايف - ماتش لايف</span>
+          <span dir="ltr" className="font-black tracking-tight">Koora Live - Kora Online</span>
+          <span dir="rtl" className="font-black">كورة لايف - ماتش لايف</span>
         </div>
       </footer>
 
