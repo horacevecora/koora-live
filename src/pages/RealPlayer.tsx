@@ -84,18 +84,24 @@ export default function RealPlayer() {
   const getKickInfo = (url: string) => {
     if (!url) return null;
     
-    // 1. التحقق من تنسيق الفيديو الطويل: kick.com/username/videos/ID
-    const longVideoMatch = url.match(/kick\.com\/[a-zA-Z0-9_]+\/videos\/([a-zA-Z0-9-]+)/i);
+    // تنظيف الرابط من أي بارامترات زائدة
+    const cleanUrl = url.split('?')[0].split('#')[0];
+
+    // 1. فيديو بتنسيق طويل: kick.com/username/videos/ID
+    const longVideoMatch = cleanUrl.match(/kick\.com\/[^\/]+\/videos\/([a-zA-Z0-9-]+)/i);
     if (longVideoMatch) return { type: 'video', id: longVideoMatch[1] };
 
-    // 2. التحقق من تنسيق الفيديو القصير: kick.com/video/ID
-    const shortVideoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/i);
+    // 2. فيديو بتنسيق قصير: kick.com/video/ID
+    const shortVideoMatch = cleanUrl.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/i);
     if (shortVideoMatch) return { type: 'video', id: shortVideoMatch[1] };
     
-    // 3. التحقق مما إذا كان رابط قناة: kick.com/username
-    const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/i);
-    if (channelMatch && !['video', 'videos'].includes(channelMatch[1].toLowerCase())) {
-      return { type: 'channel', id: channelMatch[1] };
+    // 3. قناة: kick.com/username
+    const channelMatch = cleanUrl.match(/kick\.com\/([a-zA-Z0-9_]+)/i);
+    if (channelMatch) {
+      const slug = channelMatch[1].toLowerCase();
+      if (slug !== 'video' && slug !== 'videos') {
+        return { type: 'channel', id: channelMatch[1] };
+      }
     }
     
     return null;
@@ -126,10 +132,12 @@ export default function RealPlayer() {
         const ifr = document.createElement("iframe");
         const info = kickInfo || { type: 'channel', id: server.url };
         
-        // بناء رابط التضمين الصحيح
-        const embedPath = info.type === 'video' ? `video/${info.id}` : info.id;
-        ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=false`;
+        // بناء رابط التضمين الصحيح بدون بارامترات قد تسبب مشاكل
+        const embedUrl = info.type === 'video' 
+          ? `https://player.kick.com/video/${info.id}` 
+          : `https://player.kick.com/${info.id}`;
         
+        ifr.src = embedUrl;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
