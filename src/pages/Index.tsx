@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Calendar, Radio, Tv, Star } from "lucide-react";
+import { Radio, Tv, Star } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -18,19 +18,15 @@ const Index = () => {
       </div>
 
       {/* الشريط العلوي */}
-      <header className="relative z-10 flex items-center justify-between px-4 py-3 bg-black/40 backdrop-blur-md border-b border-white/5">
+      <header className="relative z-10 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate('/real.html')}
-            className="flex items-center gap-2 bg-[#00e676] text-black px-4 py-2 rounded-xl font-black text-sm hover:bg-[#00c853] transition-all transform active:scale-95 shadow-lg shadow-emerald-500/20"
+            className="flex items-center gap-2 bg-[#00e676] text-black px-5 py-2.5 rounded-xl font-black text-sm hover:bg-[#00c853] transition-all transform active:scale-95 shadow-lg shadow-emerald-500/20"
           >
             <Tv size={18} fill="currentColor" />
             <span>شاهد الآن</span>
           </button>
-          <div className="hidden md:flex items-center gap-2 bg-red-500/10 text-red-500 px-3 py-2 rounded-xl font-bold text-xs border border-red-500/20">
-            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-            <span>6 مباشر الآن</span>
-          </div>
         </div>
 
         <div className="flex flex-col items-end">
@@ -42,28 +38,9 @@ const Index = () => {
         </div>
       </header>
 
-      {/* شريط الأخبار المتحرك */}
-      <div className="relative z-10 bg-emerald-600/5 border-b border-white/5 py-1.5 overflow-hidden whitespace-nowrap">
-        <div className="flex gap-12 animate-marquee text-[11px] font-bold text-emerald-400/80">
-          <span>• الهلال يحقق الفوز الكبير على النصر 3-0</span>
-          <span>• رونالدو يسجل هدفه الـ 50 في الموسم الحالي</span>
-          <span>• مانشستر سيتي يخطف الفوز في الوقت بدل الضائع!</span>
-          <span>• ريال مدريد يتصدر الدوري الإسباني بعد فوز ثمين</span>
-          <span>• الهلال يحقق الفوز الكبير على النصر 3-0</span>
-        </div>
-      </div>
-
       {/* المحتوى الرئيسي */}
       <main className="relative z-10 flex-grow flex flex-col items-center justify-center px-4 py-12 text-center">
-        {/* شارة البث المباشر */}
-        <div className="mb-10 inline-flex items-center gap-3 bg-slate-900/60 backdrop-blur-xl border border-white/10 px-5 py-2.5 rounded-full shadow-2xl">
-          <span className="text-xs md:text-sm font-bold text-slate-200">البث المباشر الأول عربياً • 6 مباريات الآن</span>
-          <div className="flex items-center gap-1.5 bg-red-600 px-2.5 py-1 rounded-lg text-[10px] font-black text-white">
-            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
-            LIVE
-          </div>
-        </div>
-
+        
         {/* قسم العناوين الكبيرة */}
         <div className="space-y-1 mb-10">
           <h1 className="text-7xl md:text-9xl font-black text-white tracking-tighter drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
@@ -75,7 +52,7 @@ const Index = () => {
         </div>
 
         {/* العناوين الفرعية */}
-        <div className="flex items-center justify-center gap-4 text-slate-200 font-black text-xl md:text-2xl mb-8">
+        <div className="flex items-center justify-center gap-4 text-slate-200 font-black text-xl md:text-2xl mb-10">
           <span>كورة أون لاين</span>
           <span className="w-2 h-2 bg-[#00e676] rounded-full shadow-[0_0_10px_#00e676]" />
           <span>ماتش لايف</span>
@@ -84,39 +61,21 @@ const Index = () => {
         </div>
 
         {/* الوصف */}
-        <p className="max-w-2xl text-slate-400 text-sm md:text-lg leading-relaxed mb-12 font-medium">
+        <p className="max-w-2xl text-slate-400 text-sm md:text-lg leading-relaxed mb-14 font-medium">
           <Star className="inline-block text-yellow-400 ml-2 mb-1" size={18} fill="currentColor" />
           مرحباً بك في موقع البث المباشر الأول عربياً — شاهد جميع المباريات أون لاين
           <br className="hidden md:block" />
           بجودة عالية، متابعة فورية للأهداف والإحصائيات والأخبار العاجلة
         </p>
 
-        {/* مؤشر البث المباشر */}
-        <div className="flex items-center gap-3 text-[#00e676] font-black text-lg mb-10">
-          <div className="flex gap-1 items-end h-5">
-            <div className="w-1.5 bg-[#00e676] animate-[bounce_1s_infinite_0ms] h-2 rounded-full" />
-            <div className="w-1.5 bg-[#00e676] animate-[bounce_1s_infinite_200ms] h-5 rounded-full" />
-            <div className="w-1.5 bg-[#00e676] animate-[bounce_1s_infinite_400ms] h-3 rounded-full" />
-            <div className="w-1.5 bg-[#00e676] animate-[bounce_1s_infinite_600ms] h-2 rounded-full" />
-          </div>
-          <span>بث مباشر الآن</span>
-        </div>
-
         {/* أزرار الأكشن */}
-        <div className="flex flex-col sm:flex-row gap-5 w-full max-w-xl">
+        <div className="w-full max-w-md">
           <Button 
             onClick={() => navigate('/real.html')}
-            className="flex-[1.5] bg-[#00e676] hover:bg-[#00c853] text-black font-black py-8 rounded-2xl text-xl shadow-2xl shadow-emerald-500/20 transition-all hover:scale-105 flex items-center justify-center gap-3"
+            className="w-full bg-[#00e676] hover:bg-[#00c853] text-black font-black py-10 rounded-3xl text-2xl shadow-2xl shadow-emerald-500/30 transition-all hover:scale-105 flex items-center justify-center gap-4"
           >
-            <Radio size={28} />
+            <Radio size={32} className="animate-pulse" />
             شاهد المباريات المباشرة
-          </Button>
-          <Button 
-            variant="outline"
-            className="flex-1 bg-slate-900/40 border-white/10 hover:bg-slate-800 text-white font-black py-8 rounded-2xl text-xl transition-all hover:scale-105 flex items-center justify-center gap-3 backdrop-blur-md"
-          >
-            <Calendar size={28} />
-            جدول المباريات
           </Button>
         </div>
       </main>
@@ -127,20 +86,6 @@ const Index = () => {
           © 2024 Koora Live - جميع الحقوق محفوظة لموقع كورة لايف الرسمي
         </p>
       </footer>
-
-      <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(-100%); }
-          100% { transform: translateX(100%); }
-        }
-        .animate-marquee {
-          animation: marquee 40s linear infinite;
-        }
-        @keyframes bounce {
-          0%, 100% { transform: scaleY(1); }
-          50% { transform: scaleY(1.5); }
-        }
-      `}</style>
     </div>
   );
 };
