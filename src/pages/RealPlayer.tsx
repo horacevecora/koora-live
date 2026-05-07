@@ -178,7 +178,6 @@ export default function RealPlayer() {
       if (isFB) {
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
-        // استخدام الرابط المباشر لفيسبوك مع تفعيل وضع ملء الشاشة والتحكم
         ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0&allowfullscreen=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
@@ -265,8 +264,12 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      <div id="main-player-wrapper" className="w-full max-w-[950px] rounded-2xl mt-8 shadow-2xl border border-white/5 bg-black flex flex-col">
-        <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5" dir="rtl">
+      {/* المشغل مع تأثير الإضاءة المحيطة */}
+      <div 
+        id="main-player-wrapper" 
+        className="w-full max-w-[950px] rounded-2xl mt-8 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/20 shadow-[0_0_40px_-10px_rgba(99,102,241,0.3)]"
+      >
+        <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5 rounded-t-2xl overflow-hidden" dir="rtl">
           {servers.map((srv, i) => (
             <button
               key={i}
@@ -282,7 +285,7 @@ export default function RealPlayer() {
         </nav>
 
         <div 
-          className="relative w-full bg-black aspect-video"
+          className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden"
           onClick={() => setShowUnmuteHint(false)}
         >
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
@@ -313,18 +316,20 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      <footer className="w-full max-w-[950px] mt-auto pt-8 pb-4 flex justify-between items-center text-[11px] text-slate-500 px-4">
-        <span dir="ltr">Koora Live - Kora Online</span>
-        <span dir="rtl">كورة لايف - ماتش لايف</span>
+      <footer className="w-full max-w-[950px] mt-auto pt-8 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
+        <div className="flex justify-between w-full items-center">
+          <span dir="ltr">Koora Live - Kora Online</span>
+          <span dir="rtl">كورة لايف - ماتش لايف</span>
+        </div>
+        <p className="opacity-30 text-[9px] uppercase tracking-widest">Protected by Karim Player Pro</p>
       </footer>
 
       <style>{`
         :root { --plyr-color-main: #6366f1; }
         .plyr { width: 100%; height: 100%; }
-        #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; }
-        #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; }
+        #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
+        #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
         
-        /* تنسيق القص الرقمي ليوتيوب بنسبة 20% */
         .youtube-crop-wrapper {
           position: relative;
           width: 100%;
