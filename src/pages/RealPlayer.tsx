@@ -178,8 +178,8 @@ export default function RealPlayer() {
       if (isFB) {
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
-        // استخدام الرابط المباشر لفيسبوك بدون أي قيود إضافية
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0&container_width=1000`;
+        // استخدام الرابط المباشر لفيسبوك مع تفعيل وضع ملء الشاشة والتحكم
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0&allowfullscreen=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -265,7 +265,7 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      <div id="main-player-wrapper" className="w-full max-w-[950px] rounded-2xl overflow-hidden mt-8 shadow-2xl border border-white/5 bg-black flex-grow flex flex-col">
+      <div id="main-player-wrapper" className="w-full max-w-[950px] rounded-2xl mt-8 shadow-2xl border border-white/5 bg-black flex flex-col">
         <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5" dir="rtl">
           {servers.map((srv, i) => (
             <button
@@ -282,7 +282,7 @@ export default function RealPlayer() {
         </nav>
 
         <div 
-          className="relative w-full flex-grow bg-black"
+          className="relative w-full bg-black aspect-video"
           onClick={() => setShowUnmuteHint(false)}
         >
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
@@ -321,7 +321,8 @@ export default function RealPlayer() {
       <style>{`
         :root { --plyr-color-main: #6366f1; }
         .plyr { width: 100%; height: 100%; }
-        #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
+        #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; }
+        #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; }
         
         /* تنسيق القص الرقمي ليوتيوب بنسبة 20% */
         .youtube-crop-wrapper {
