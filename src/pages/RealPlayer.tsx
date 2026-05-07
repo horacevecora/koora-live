@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
 
-type ServerType = "iframe" | "m3u8";
+type ServerType = "iframe" | "m3u8" | "youtube";
 
 interface Server {
   name: string;
@@ -52,8 +52,7 @@ export default function RealPlayer() {
       buildPlayer(defaultServers[0]);
     }
 
-    return () => {
-      destroy();
+    return () => {destroy();
     };
   }, []);
 
@@ -69,6 +68,13 @@ export default function RealPlayer() {
     }
   }, []);
 
+  /* ---- استخراج معرف اليوتيوب من الرابط ---- */
+  const getYouTubeId = (url: string) => {
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return (match && match[2].length === 11) ? match[2] : null;
+  };
+
   /* ---- بناء المشغّل حسب نوع السيرفر ---- */
   const buildPlayer = useCallback(
     (server: Server) => {
@@ -81,63 +87,59 @@ export default function RealPlayer() {
       setLoading(true);
       setError(null);
 
+      const ytId = getYouTubeId(server.url);
+
+      /* ── YOUTUBE ── */
+      if (ytId || server.type === "youtube") {
+        const div = document.createElement("div");
+        div.className = "plyr__video-embed";
+        const ifr = document.createElement("iframe");
+        ifr.src = `https://www.youtube.com/embed/${ytId || server.url}?origin=${window.location.origin}&iv_load_policy=3&modestbranding=1&playsinline=1&showinfo=0&rel=0&enablejsapi=1`;
+        ifr.allow = "autoplay; encrypted-media; picture-in-picture";
+        ifr.allowFullscreen = true;
+        div.appendChild(ifr);
+        container.appendChild(div);
+
+        const plyr = new Plyr(div, {
+          ratio: "16:9",
+          youtube: { noCookie: true, rel: 0, showinfo: 0, iv_load_policy: 3, modestbranding: 1 }
+        });
+        plyrRef.current = plyr;
+        setLoading(false);
+        return;
+      }
+
       /* ── M3U8 ── */
-      if (server.type === "m3u8") {
+      if (server.type === "m3u8" || server.url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
         container.appendChild(video);
 
-        // تهيئة Plyr أولاً كما في الكود المرفق
         const plyr = new Plyr(video, {
-          controls: [
-            "play-large", "play", "progress", "current-time", 
-            "mute", "volume", "settings", "pip", "fullscreen"
-          ],
+          controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
           settings: ["quality", "speed"],
           ratio: "16:9",
         });
         plyrRef.current = plyr;
 
-        // تهيئة Hls.js
         if (Hls.isSupported()) {
           const hls = new Hls();
           hlsRef.current = hls;
           hls.loadSource(server.url);
           hls.attachMedia(video);
-          
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            setLoading(false);
-          });
-
+          hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) {
-              setError("تعذّر تشغيل البث. الرابط قد يكون متوقفاً.");
-              setLoading(false);
-            }
+            if (data.fatal) { setError("تعذّر تشغيل البث."); setLoading(false); }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = server.url;
           video.addEventListener("loadedmetadata", () => setLoading(false));
         } else {
-          setError("المتصفح لا يدعم تشغيل بث m3u8.");
+          setError("المتصفح لا يدعم m3u8.");
           setLoading(false);
         }
-
-        // التحكم في تدوير الشاشة عند التكبير
-        plyr.on('enterfullscreen', () => {
-          if (window.screen.orientation && (window.screen.orientation as any).lock) {
-            (window.screen.orientation as any).lock('landscape').catch(() => {});
-          }
-        });
-        
-        plyr.on('exitfullscreen', () => {
-          if (window.screen.orientation && (window.screen.orientation as any).unlock) {
-            (window.screen.orientation as any).unlock();
-          }
-        });
-
         return;
       }
 
@@ -146,11 +148,7 @@ export default function RealPlayer() {
       if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
         const ifr = container.querySelector("iframe");
-        if (ifr) {
-          ifr.style.width = "100%";
-          ifr.style.height = "100%";
-          ifr.style.border = "none";
-        }
+        if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
         const ifr = document.createElement("iframe");
         ifr.src = url;
@@ -181,22 +179,15 @@ export default function RealPlayer() {
 
   const handleSettingsClick = () => {
     const newCount = clickCount + 1;
-    if (newCount >= 3) {
-      navigate('/admin');
-    } else {
-      setClickCount(newCount);
-      setTimeout(() => setClickCount(0), 2000);
-    }
+    if (newCount >= 3) { navigate('/admin'); } 
+    else { setClickCount(newCount); setTimeout(() => setClickCount(0), 2000); }
   };
 
   const toggleFullScreen = () => {
     const elem = document.getElementById('main-player-wrapper');
     if (!elem) return;
-    if (!document.fullscreenElement) {
-      elem.requestFullscreen().catch(() => {});
-    } else {
-      document.exitFullscreen();
-    }
+    if (!document.fullscreenElement) { elem.requestFullscreen().catch(() => {}); } 
+    else { document.exitFullscreen(); }
   };
 
   return (
