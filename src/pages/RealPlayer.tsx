@@ -34,7 +34,6 @@ export default function RealPlayer() {
 
   /* ---- إدارة سياسة المرجع (Referrer Policy) ---- */
   useEffect(() => {
-    // منع إرسال المرجع تماماً على مستوى الصفحة
     const meta = document.createElement('meta');
     meta.name = "referrer";
     meta.content = "no-referrer";
@@ -95,12 +94,29 @@ export default function RealPlayer() {
       setShowUnmuteHint(false);
 
       const url = server.url.trim();
+      const dmId = getDailymotionId(url);
 
-      /* 1. روابط M3U8 (بما فيها cdndirector) */
+      // إذا كان الرابط لـ Dailymotion (سواء مباشر أو صفحة فيديو)
+      if (dmId) {
+        const ifr = document.createElement("iframe");
+        // استخدام الـ embed التقليدي مع إخفاء المرجع تماماً
+        ifr.src = `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1&mute=1`;
+        ifr.setAttribute("referrerpolicy", "no-referrer");
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        ifr.allow = "autoplay; fullscreen; picture-in-picture";
+        container.appendChild(ifr);
+        setLoading(false);
+        setShowUnmuteHint(true);
+        return;
+      }
+
+      /* 1. روابط M3U8 الأخرى */
       if (url.includes(".m3u8") || server.type === "m3u8") {
         const video = document.createElement("video");
         video.playsInline = true;
-        // إخفاء المرجع تماماً للفيديو
         video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
         container.appendChild(video);
@@ -112,43 +128,11 @@ export default function RealPlayer() {
         plyrRef.current = plyr;
 
         if (Hls.isSupported()) {
-          const hls = new Hls({ 
-            // إعدادات لتقليل احتمالية الـ 403
-            xhrSetup: (xhr) => {
-              xhr.withCredentials = false;
-            },
-            // محاولة تجاوز بعض قيود CORS عبر عدم إرسال رؤوس مخصصة
-            enableWorker: false 
-          });
+          const hls = new Hls({ xhrSetup: (xhr) => { xhr.withCredentials = false; } });
           hlsRef.current = hls;
           hls.loadSource(url);
           hls.attachMedia(video);
-          
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
-          
-          hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) {
-              // إذا فشل الرابط المباشر بسبب CORS/403، نحاول استخدام الـ Embed الرسمي كحل بديل
-              const dmId = getDailymotionId(url);
-              if (dmId) {
-                console.log("Direct link failed, trying embed fallback...");
-                const ifr = document.createElement("iframe");
-                ifr.src = `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1&mute=1`;
-                ifr.style.width = "100%";
-                ifr.style.height = "100%";
-                ifr.style.border = "none";
-                ifr.allowFullscreen = true;
-                ifr.allow = "autoplay; fullscreen";
-                container.innerHTML = "";
-                container.appendChild(ifr);
-                setLoading(false);
-                setShowUnmuteHint(true);
-              } else {
-                setError("خطأ 403: السيرفر يرفض التشغيل في المتصفح. الرابط قد يكون محمياً أو منتهي الصلاحية.");
-                setLoading(false);
-              }
-            }
-          });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = url;
           video.addEventListener("loadedmetadata", () => setLoading(false));
