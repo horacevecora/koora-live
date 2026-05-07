@@ -252,8 +252,8 @@ export default function RealPlayer() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center pt-6 px-6 pb-6 sm:px-10 sm:pb-10 font-sans relative overflow-hidden">
-      <div className="absolute top-6 left-8 right-8 flex justify-between items-center z-50 pointer-events-none">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center pt-6 px-8 pb-16 sm:px-16 sm:pb-24 font-sans relative overflow-hidden">
+      <div className="absolute top-6 left-10 right-10 flex justify-between items-center z-50 pointer-events-none">
         <div className="flex gap-6 items-center pointer-events-auto">
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
@@ -317,7 +317,7 @@ export default function RealPlayer() {
       </div>
 
       {/* التذييل بدون خط فاصل وبمسافات أقل */}
-      <footer className="w-full max-w-[1150px] mt-8 pb-6 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
+      <footer className="w-full max-w-[1150px] mt-10 pb-6 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
         <div className="flex justify-between w-full items-center">
           <span dir="ltr" className="font-bold tracking-tight">Koora Live - Kora Online</span>
           <span dir="rtl" className="font-bold">كورة لايف - ماتش لايف</span>
