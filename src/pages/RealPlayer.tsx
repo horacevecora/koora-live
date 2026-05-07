@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import Plyr from "plyr";
+import * as Plyr from "plyr";
 import Hls from "hls.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,7 @@ interface Server {
 export default function RealPlayer() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
-  const plyrRef = useRef<Plyr | null>(null);
+  const plyrRef = useRef<any>(null);
   const hlsRef = useRef<Hls | null>(null);
 
   const [servers, setServers] = useState<Server[]>([]);
@@ -59,7 +59,9 @@ export default function RealPlayer() {
       hlsRef.current = null;
     }
     if (plyrRef.current) {
-      plyrRef.current.destroy();
+      if (typeof plyrRef.current.destroy === 'function') {
+        plyrRef.current.destroy();
+      }
       plyrRef.current = null;
     }
   }, []);
@@ -84,7 +86,8 @@ export default function RealPlayer() {
         video.className = "w-full h-full";
         container.appendChild(video);
 
-        const plyr = new Plyr(video, {
+        // @ts-ignore
+        const plyr = new window.Plyr(video, {
           controls: [
             "play-large",
             "play",
@@ -230,7 +233,7 @@ export default function RealPlayer() {
     <div
       dir="rtl"
       className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950
-                 flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8 font-sans relative overflow-hidden"
+                 flex flex-col items-center justify-center p-2 sm:p-4 font-sans relative overflow-hidden"
     >
       {/* ── أزرار التحكم العلوية (مخفية/واضحة) ── */}
       <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 pointer-events-none">
@@ -254,18 +257,11 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* ── العنوان ── */}
-      <div className="w-full max-w-4xl mb-6 text-center">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-          Koora Live - Kora Online - كورة لايف - ماتش لايف
-        </h1>
-      </div>
-
-      {/* ── الغلاف الرئيسي ── */}
+      {/* ── الغلاف الرئيسي (تم توسيعه) ── */}
       <div
         id="main-player-wrapper"
         className={cn(
-          "w-full max-w-4xl rounded-2xl overflow-hidden",
+          "w-full max-w-[95vw] lg:max-w-[85vw] xl:max-w-[1200px] rounded-2xl overflow-hidden",
           "shadow-2xl shadow-indigo-500/10",
           "border border-white/5 bg-black"
         )}
@@ -286,7 +282,7 @@ export default function RealPlayer() {
               aria-selected={i === activeIndex}
               onClick={() => handleBtnClick(i)}
               className={cn(
-                "flex-1 min-w-[100px] px-4 py-3.5 sm:py-4 text-sm sm:text-base font-semibold",
+                "flex-1 min-w-[100px] px-4 py-3 sm:py-3.5 text-sm sm:text-base font-semibold",
                 "transition-all duration-300 ease-out",
                 "border-l border-white/5 last:border-l-0",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-inset",
@@ -362,7 +358,7 @@ export default function RealPlayer() {
       </div>
 
       {/* ── التذييل ── */}
-      <footer className="mt-6 text-center text-xs text-slate-500">
+      <footer className="mt-4 text-center text-[10px] text-slate-600">
         Koora Live - Kora Online - كورة لايف - ماتش لايف
       </footer>
 
