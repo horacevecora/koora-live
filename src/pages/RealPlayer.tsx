@@ -264,10 +264,10 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* المشغل مع الإطار المضيء المطور */}
+      {/* المشغل مع الإطار المضيء المطور - تم تقليل الظل الجانبي */}
       <div 
         id="main-player-wrapper" 
-        className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/40 shadow-[0_0_40px_rgba(99,102,241,0.4)]"
+        className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]"
       >
         <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5 rounded-t-2xl overflow-hidden" dir="rtl">
           {servers.map((srv, i) => (
