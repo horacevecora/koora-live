@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import * as Plyr from "plyr";
+// @ts-ignore
+import Plyr from "plyr";
 import Hls from "hls.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
@@ -21,7 +22,7 @@ interface Server {
 export default function RealPlayer() {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
-  const plyrRef = useRef<any>(null);
+  const plyrRef = useRef<Plyr | null>(null);
   const hlsRef = useRef<Hls | null>(null);
 
   const [servers, setServers] = useState<Server[]>([]);
@@ -50,6 +51,10 @@ export default function RealPlayer() {
       setServers(defaultServers);
       buildPlayer(defaultServers[0]);
     }
+
+    return () => {
+      destroy();
+    };
   }, []);
 
   /* ---- تنظيف المشغّل القديم ---- */
@@ -59,9 +64,7 @@ export default function RealPlayer() {
       hlsRef.current = null;
     }
     if (plyrRef.current) {
-      if (typeof plyrRef.current.destroy === 'function') {
-        plyrRef.current.destroy();
-      }
+      plyrRef.current.destroy();
       plyrRef.current = null;
     }
   }, []);
@@ -81,89 +84,67 @@ export default function RealPlayer() {
       /* ── M3U8 ── */
       if (server.type === "m3u8") {
         const video = document.createElement("video");
-        video.setAttribute("playsinline", "");
+        video.playsInline = true;
         video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
         container.appendChild(video);
 
-        // @ts-ignore
-        const plyr = new window.Plyr(video, {
+        // تهيئة Plyr أولاً كما في الكود المرفق
+        const plyr = new Plyr(video, {
           controls: [
-            "play-large",
-            "play",
-            "progress",
-            "current-time",
-            "mute",
-            "volume",
-            "captions",
-            "settings",
-            "pip",
-            "airplay",
-            "fullscreen",
+            "play-large", "play", "progress", "current-time", 
+            "mute", "volume", "settings", "pip", "fullscreen"
           ],
-          settings: ["quality", "speed", "loop"],
-          speed: { selected: 1, options: [0.5, 0.75, 1, 1.25, 1.5, 2] },
-          fullscreen: { enabled: true, fallback: true, iosNative: true },
+          settings: ["quality", "speed"],
           ratio: "16:9",
         });
-
         plyrRef.current = plyr;
 
-        const handleFullscreenEnter = () => {
-          if (
-            typeof screen !== "undefined" &&
-            screen.orientation &&
-            (screen.orientation as any).lock
-          ) {
-            (screen.orientation as any).lock("landscape").catch(() => {});
-          }
-        };
-
-        plyr.on("enterfullscreen", handleFullscreenEnter);
-
+        // تهيئة Hls.js
         if (Hls.isSupported()) {
-          const hls = new Hls({
-            enableWorker: true,
-            lowLatencyMode: false,
-          });
+          const hls = new Hls();
           hlsRef.current = hls;
-
           hls.loadSource(server.url);
           hls.attachMedia(video);
-
+          
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             setLoading(false);
           });
 
-          hls.on(Hls.Events.ERROR, (_event, data) => {
+          hls.on(Hls.Events.ERROR, (_, data) => {
             if (data.fatal) {
-              setError("تعذّر تشغيل البث. الرجاء المحاولة لاحقاً.");
+              setError("تعذّر تشغيل البث. الرابط قد يكون متوقفاً.");
               setLoading(false);
             }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = server.url;
           video.addEventListener("loadedmetadata", () => setLoading(false));
-          video.addEventListener("error", () => {
-            setError("تعذّر تشغيل البث. الرجاء المحاولة لاحقاً.");
-            setLoading(false);
-          });
         } else {
-          setError("المتصفح لا يدعم تشغيل بث HLS.");
+          setError("المتصفح لا يدعم تشغيل بث m3u8.");
           setLoading(false);
         }
+
+        // التحكم في تدوير الشاشة عند التكبير
+        plyr.on('enterfullscreen', () => {
+          if (window.screen.orientation && (window.screen.orientation as any).lock) {
+            (window.screen.orientation as any).lock('landscape').catch(() => {});
+          }
+        });
+        
+        plyr.on('exitfullscreen', () => {
+          if (window.screen.orientation && (window.screen.orientation as any).unlock) {
+            (window.screen.orientation as any).unlock();
+          }
+        });
+
         return;
       }
 
       /* ── IFRAME ── */
       const url = server.url;
-
       if (url.includes("<iframe")) {
-        const cleaned = url.replace(
-          "<iframe",
-          '<iframe referrerpolicy="no-referrer" allowfullscreen'
-        );
-        container.innerHTML = cleaned;
+        container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
         const ifr = container.querySelector("iframe");
         if (ifr) {
           ifr.style.width = "100%";
@@ -181,7 +162,6 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       }
 
-      /* إخفاء المُحَمِّل بعد مدّة وجيزة للـ iframe */
       const t = setTimeout(() => setLoading(false), 1500);
       return () => clearTimeout(t);
     },
@@ -199,13 +179,6 @@ export default function RealPlayer() {
     [buildPlayer, servers]
   );
 
-  /* ---- تغيير الزّر النشط يدويّاً ---- */
-  const handleBtnClick = (index: number) => {
-    if (index === activeIndex) return;
-    switchServer(index);
-  };
-
-  /* ---- التحكم في الإعدادات المخفية ---- */
   const handleSettingsClick = () => {
     const newCount = clickCount + 1;
     if (newCount >= 3) {
@@ -216,187 +189,74 @@ export default function RealPlayer() {
     }
   };
 
-  /* ---- تكبير الشاشة ---- */
   const toggleFullScreen = () => {
     const elem = document.getElementById('main-player-wrapper');
     if (!elem) return;
     if (!document.fullscreenElement) {
-      elem.requestFullscreen().catch(err => {
-        console.error(`Error: ${err.message}`);
-      });
+      elem.requestFullscreen().catch(() => {});
     } else {
       document.exitFullscreen();
     }
   };
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950
-                 flex flex-col items-center p-2 sm:p-4 font-sans relative overflow-hidden"
-    >
-      {/* ── أزرار التحكم العلوية ── */}
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center p-2 sm:p-4 font-sans relative overflow-hidden">
       <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 pointer-events-none">
         <div className="flex gap-6 items-center pointer-events-auto">
-          <button 
-            onClick={handleSettingsClick}
-            className="text-white/5 hover:text-white/10 transition-colors p-1"
-          >
+          <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
           </button>
-          
-          <button 
-            onClick={toggleFullScreen}
-            className="text-white/80 hover:text-white transition-all transform hover:scale-110 p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10"
-            title="Maximize"
-          >
+          <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
             <Maximize size={28} />
           </button>
         </div>
       </div>
 
-      {/* ── الغلاف الرئيسي (تم توسيعه لملء المساحة) ── */}
-      <div
-        id="main-player-wrapper"
-        className={cn(
-          "w-full max-w-[98vw] lg:max-w-[92vw] xl:max-w-[1400px] rounded-2xl overflow-hidden mt-4 sm:mt-8",
-          "shadow-2xl shadow-indigo-500/10",
-          "border border-white/5 bg-black flex-grow flex flex-col"
-        )}
-      >
-        {/* ── شريط الأزرار ── */}
-        <nav
-          className={cn(
-            "flex flex-wrap bg-slate-900/80 backdrop-blur",
-            "border-b border-white/5"
-          )}
-          role="tablist"
-          aria-label="قائمة السيرفرات"
-          dir="rtl"
-        >
+      <div id="main-player-wrapper" className="w-full max-w-[1400px] rounded-2xl overflow-hidden mt-8 shadow-2xl border border-white/5 bg-black flex-grow flex flex-col">
+        <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5" dir="rtl">
           {servers.map((srv, i) => (
             <button
               key={i}
-              role="tab"
-              aria-selected={i === activeIndex}
-              onClick={() => handleBtnClick(i)}
+              onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[100px] px-4 py-3 sm:py-4 text-sm sm:text-base font-semibold",
-                "transition-all duration-300 ease-out",
-                "border-l border-white/5 last:border-l-0",
-                "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400 focus-visible:ring-inset",
-                i === activeIndex
-                  ? "bg-indigo-600 text-white shadow-lg shadow-indigo-600/30"
-                  : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                "flex-1 min-w-[100px] px-4 py-4 text-sm sm:text-base font-bold transition-all",
+                i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
-              <span className="flex items-center justify-center gap-2">
-                {i === activeIndex && (
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
-                  </span>
-                )}
-                {srv.name}
-              </span>
+              {srv.name}
             </button>
           ))}
         </nav>
 
-        {/* ── المشغّل ── */}
         <div className="relative w-full flex-grow bg-black aspect-video lg:aspect-auto">
-          <div
-            ref={containerRef}
-            className="absolute inset-0 flex items-center justify-center"
-          />
-
-          {/* شاشة التحميل */}
+          <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
+          
           {loading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-10">
-              <div className="relative">
-                <div className="w-14 h-14 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-              </div>
-              <p className="mt-4 text-slate-300 text-sm font-medium">
-                جارٍ تحميل البث...
-              </p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
+              <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+              <p className="mt-4 text-slate-300 text-sm">جارٍ تحميل البث...</p>
             </div>
           )}
 
-          {/* شاشة الخطأ */}
           {error && !loading && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6">
-              <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-4">
-                <svg
-                  className="w-8 h-8 text-red-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
-              <p className="text-red-300 text-base font-semibold mb-2">
-                {error}
-              </p>
-              <button
-                onClick={() => switchServer(activeIndex)}
-                className="mt-3 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500
-                           text-white text-sm font-semibold transition-all duration-200
-                           active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-              >
-                إعادة المحاولة
-              </button>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
+              <p className="text-red-400 font-bold mb-4">{error}</p>
+              <button onClick={() => switchServer(activeIndex)} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">إعادة المحاولة</button>
             </div>
           )}
         </div>
       </div>
 
-      {/* ── التذييل (تم تعديله ليكون في الأسفل مع توزيع النص) ── */}
-      <footer className="w-full max-w-[1400px] mt-auto pt-8 pb-4 flex justify-between items-center text-[11px] sm:text-[13px] text-slate-500 px-4">
-        <span dir="ltr" className="font-medium tracking-wide">Koora Live - Kora Online</span>
-        <span dir="rtl" className="font-bold">كورة لايف - ماتش لايف</span>
+      <footer className="w-full max-w-[1400px] mt-auto pt-8 pb-4 flex justify-between items-center text-[11px] text-slate-500 px-4">
+        <span dir="ltr">Koora Live - Kora Online</span>
+        <span dir="rtl">كورة لايف - ماتش لايف</span>
       </footer>
 
-      {/* ── تخصيص Plyr CSS عبر متغيرات ── */}
       <style>{`
-        :root {
-          --plyr-color-main: #6366f1;
-          --plyr-video-control-color: #e2e8f0;
-          --plyr-video-control-color-hover: #ffffff;
-          --plyr-video-control-background-hover: #6366f120;
-          --plyr-menu-background: #0f172aee;
-          --plyr-menu-color: #cbd5e1;
-          --plyr-menu-item-arrow-color: #6366f1;
-          --plyr-range-fill-background: #6366f1;
-          --plyr-tooltip-background: #0f172a;
-          --plyr-tooltip-color: #f1f5f9;
-        }
-        .plyr {
-          width: 100%;
-          height: 100%;
-        }
-        .plyr--fullscreen-active {
-          max-height: 100vh;
-        }
-        .plyr__control--overlaid {
-          background: #6366f1cc !important;
-          backdrop-filter: blur(4px);
-        }
-        #main-player-wrapper:fullscreen {
-          max-width: none;
-          width: 100vw;
-          height: 100vh;
-          border-radius: 0;
-          margin: 0;
-        }
-        #main-player-wrapper:fullscreen .aspect-video {
-          aspect-ratio: auto;
-          height: calc(100vh - 56px);
-        }
+        :root { --plyr-color-main: #6366f1; }
+        .plyr { width: 100%; height: 100%; }
+        #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
+        #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); }
       `}</style>
     </div>
   );
