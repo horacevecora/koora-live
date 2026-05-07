@@ -19,12 +19,12 @@ const Index = () => {
         </p>
         
         <Button 
-          onClick={() => navigate('/player')}
+          onClick={() => navigate('/real.html')}
           size="lg"
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 rounded-full text-xl font-bold transition-all transform hover:scale-105 flex items-center gap-3"
         >
           <Play fill="currentColor" />
-          فتح المشغل الآن
+          فتح المشغل (real.html)
         </Button>
       </div>
       
