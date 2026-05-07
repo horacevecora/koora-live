@@ -252,8 +252,8 @@ export default function RealPlayer() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center p-1 sm:p-2 font-sans relative overflow-hidden">
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 pointer-events-none">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center p-4 sm:p-8 font-sans relative overflow-hidden">
+      <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-50 pointer-events-none">
         <div className="flex gap-6 items-center pointer-events-auto">
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
@@ -264,10 +264,10 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* المشغل مع تكبير الحجم واستغلال المساحات */}
+      {/* المشغل مع تكبير الحجم واستغلال المساحات وإزاحة للأسفل */}
       <div 
         id="main-player-wrapper" 
-        className="w-full max-w-[1150px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/20 shadow-[0_0_50px_-10px_rgba(99,102,241,0.4)]"
+        className="w-full max-w-[1150px] rounded-2xl mt-12 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/20 shadow-[0_0_50px_-10px_rgba(99,102,241,0.4)]"
       >
         <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5 rounded-t-2xl overflow-hidden" dir="rtl">
           {servers.map((srv, i) => (
@@ -317,7 +317,7 @@ export default function RealPlayer() {
       </div>
 
       {/* التذييل بدون خط فاصل وبمسافات أقل */}
-      <footer className="w-full max-w-[1150px] mt-4 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
+      <footer className="w-full max-w-[1150px] mt-6 pb-6 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
         <div className="flex justify-between w-full items-center">
           <span dir="ltr" className="font-bold tracking-tight">Koora Live - Kora Online</span>
           <span dir="rtl" className="font-bold">كورة لايف - ماتش لايف</span>
