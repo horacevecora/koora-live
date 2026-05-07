@@ -264,10 +264,10 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* المشغل مع مسافة علوية متوازنة */}
+      {/* المشغل مع الإطار المضيء المطور */}
       <div 
         id="main-player-wrapper" 
-        className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/20 shadow-[0_0_60px_-15px_rgba(99,102,241,0.3)]"
+        className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/40 shadow-[0_0_40px_rgba(99,102,241,0.4)]"
       >
         <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5 rounded-t-2xl overflow-hidden" dir="rtl">
           {servers.map((srv, i) => (
@@ -316,7 +316,7 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* التذييل مع تقليل المسافة السفلية */}
+      {/* التذييل */}
       <footer className="w-full max-w-[1200px] mt-6 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
         <div className="flex justify-between w-full items-center opacity-40">
           <span dir="ltr" className="font-bold tracking-tight">Koora Live - Kora Online</span>
