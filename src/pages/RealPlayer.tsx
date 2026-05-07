@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
 
-type ServerType = "iframe" | "m3u8" | "youtube" | "facebook" | "twitch" | "kick";
+type ServerType = "iframe" | "m3u8" | "youtube" | "facebook" | "twitch" | "kick" | "dailymotion";
 
 interface Server {
   name: string;
@@ -75,6 +75,11 @@ export default function RealPlayer() {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
+  };
+
+  const getDailymotionId = (url: string) => {
+    const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video)|\/dai\.ly)\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
   };
 
   const getTwitchChannel = (url: string) => {
@@ -145,9 +150,24 @@ export default function RealPlayer() {
 
       /* 2. روابط المنصات */
       const ytId = getYouTubeId(url);
+      const dmId = getDailymotionId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
       const isFB = isFacebookUrl(url);
+
+      if (dmId) {
+        const ifr = document.createElement("iframe");
+        ifr.src = `https://www.dailymotion.com/embed/video/${dmId}?autoplay=1&mute=1`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        ifr.allow = "autoplay; fullscreen";
+        container.appendChild(ifr);
+        setShowUnmuteHint(true);
+        setLoading(false);
+        return;
+      }
 
       if (kickInfo) {
         const ifr = document.createElement("iframe");
