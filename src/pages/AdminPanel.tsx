@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, Settings, X, Check, RotateCcw } from "lucide-react";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, Settings, X, Check, RotateCcw, Lock } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { showSuccess } from "@/utils/toast";
+import { showSuccess, showError } from "@/utils/toast";
 
 interface Server {
   name: string;
@@ -20,8 +20,18 @@ const AdminPanel = () => {
   const [newName, setNewName] = useState("");
   const [newUrl, setNewUrl] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  
+  // نظام الحماية
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [passwordInput, setPasswordInput] = useState("");
 
   useEffect(() => {
+    // التحقق مما إذا كان المستخدم قد سجل دخوله مسبقاً في هذه الجلسة
+    const authStatus = sessionStorage.getItem('admin_auth');
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+    }
+
     const saved = localStorage.getItem('player_servers');
     if (saved) {
       setServers(JSON.parse(saved));
@@ -31,6 +41,17 @@ const AdminPanel = () => {
       localStorage.setItem('player_servers', JSON.stringify(defaultServers));
     }
   }, []);
+
+  const handleLogin = () => {
+    if (passwordInput === "simo") {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('admin_auth', 'true');
+      showSuccess("تم تسجيل الدخول بنجاح");
+    } else {
+      showError("كلمة المرور غير صحيحة");
+      setPasswordInput("");
+    }
+  };
 
   const saveServers = (updated: Server[]) => {
     setServers(updated);
@@ -42,14 +63,12 @@ const AdminPanel = () => {
     const type = newUrl.includes('.m3u8') ? 'm3u8' : 'iframe';
     
     if (editingIndex !== null) {
-      // تحديث قناة موجودة
       const updated = [...servers];
       updated[editingIndex] = { name: newName, url: newUrl, type };
       saveServers(updated);
       setEditingIndex(null);
       showSuccess("تم تحديث القناة بنجاح");
     } else {
-      // إضافة قناة جديدة
       const updated = [...servers, { name: newName, url: newUrl, type }];
       saveServers(updated);
       showSuccess("تمت إضافة القناة بنجاح");
@@ -85,11 +104,52 @@ const AdminPanel = () => {
     if (target < 0 || target >= updated.length) return;
     [updated[index], updated[target]] = [updated[target], updated[index]];
     saveServers(updated);
-    // تحديث مؤشر التعديل إذا لزم الأمر
     if (editingIndex === index) setEditingIndex(target);
     else if (editingIndex === target) setEditingIndex(index);
   };
 
+  // واجهة تسجيل الدخول
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans" dir="rtl">
+        <Card className="w-full max-w-md bg-[#0f172a] border-slate-800 text-white shadow-2xl">
+          <CardHeader className="text-center space-y-2">
+            <div className="mx-auto w-12 h-12 bg-indigo-600/20 rounded-full flex items-center justify-center mb-2">
+              <Lock className="text-indigo-500" size={24} />
+            </div>
+            <CardTitle className="text-2xl font-black">منطقة محظورة</CardTitle>
+            <p className="text-slate-400 text-sm">يرجى إدخال كلمة المرور للوصول للوحة التحكم</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input 
+              type="password"
+              placeholder="كلمة المرور" 
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
+              className="bg-slate-900 border-slate-700 text-white text-center text-lg tracking-widest focus:ring-indigo-500"
+              autoFocus
+            />
+            <Button 
+              onClick={handleLogin}
+              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-6 rounded-xl"
+            >
+              دخول
+            </Button>
+            <Button 
+              variant="ghost"
+              onClick={() => navigate('/real.html')}
+              className="w-full text-slate-500 hover:text-white"
+            >
+              العودة للمشاهدة
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // واجهة لوحة التحكم (تظهر فقط بعد تسجيل الدخول)
   return (
     <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans" dir="rtl">
       <div className="max-w-4xl mx-auto space-y-8">
@@ -100,6 +160,14 @@ const AdminPanel = () => {
                <Settings size={18} className="text-white" />
              </div>
           </div>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => { sessionStorage.removeItem('admin_auth'); setIsAuthenticated(false); }}
+            className="border-slate-800 text-slate-400 hover:bg-red-900/20 hover:text-red-500"
+          >
+            تسجيل الخروج
+          </Button>
         </div>
 
         <Card className={`bg-[#0f172a]/50 border-slate-800 text-white transition-all duration-500 ${editingIndex !== null ? 'ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/20' : ''}`}>
@@ -125,7 +193,7 @@ const AdminPanel = () => {
               className="bg-slate-900 border-slate-700 text-white focus:ring-indigo-500"
             />
             <Input 
-              placeholder="رابط الـ iframe أو m3u8" 
+              placeholder="رابط الـ iframe أو m3u8 أو ts" 
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
               className="bg-slate-900 border-slate-700 text-white focus:ring-indigo-500"
