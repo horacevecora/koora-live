@@ -32,8 +32,14 @@ export default function RealPlayer() {
   const [clickCount, setClickCount] = useState(0);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
 
-  /* ---- تحميل السيرفرات من localStorage ---- */
+  /* ---- إدارة سياسة المرجع (Referrer Policy) ---- */
   useEffect(() => {
+    // إضافة ميتا تاج لمنع إرسال المرجع، وهذا يحل مشكلة 403 في معظم السيرفرات
+    const meta = document.createElement('meta');
+    meta.name = "referrer";
+    meta.content = "no-referrer";
+    document.head.appendChild(meta);
+
     const saved = localStorage.getItem('player_servers');
     if (saved) {
       const parsed = JSON.parse(saved);
@@ -55,6 +61,9 @@ export default function RealPlayer() {
 
     return () => {
       destroy();
+      if (document.head.contains(meta)) {
+        document.head.removeChild(meta);
+      }
     };
   }, []);
 
@@ -78,8 +87,8 @@ export default function RealPlayer() {
   };
 
   const getDailymotionId = (url: string) => {
-    // تحسين استخراج المعرف ليشمل روابط CDN
-    const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video|\/cdn\/live\/video)|\/dai\.ly)\/([a-zA-Z0-9]+)/);
+    // تحديث الريجكس ليشمل روابط cdndirector
+    const match = url.match(/(?:dailymotion\.com(?:\/video|\/embed\/video|\/cdn\/live\/video\/)|\/dai\.ly|cdndirector\.dailymotion\.com\/cdn\/live\/video\/)([a-zA-Z0-9]+)/);
     return match ? match[1] : null;
   };
 
@@ -119,7 +128,7 @@ export default function RealPlayer() {
       if (server.type === "m3u8" || url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
-        // إزالة no-referrer للسماح بمرور التوكنات في روابط m3u8
+        video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
         container.appendChild(video);
 
@@ -135,7 +144,6 @@ export default function RealPlayer() {
             xhrSetup: (xhr) => { 
               xhr.withCredentials = false; 
             },
-            // تحسين إعدادات التحميل للروابط التي تحتوي على توكنات
             enableWorker: true,
             lowLatencyMode: true
           });
@@ -145,13 +153,11 @@ export default function RealPlayer() {
           hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => {
             if (data.fatal) { 
-              // إذا فشل الرابط المباشر وكان من Dailymotion، نحاول تشغيله كـ iframe
               const dmId = getDailymotionId(url);
               if (dmId) {
-                console.log("HLS failed, trying Dailymotion Iframe fallback...");
                 loadDailymotionIframe(dmId);
               } else {
-                setError("تعذّر تشغيل البث المباشر (CORS Error)."); 
+                setError("خطأ في تشغيل الرابط (403 Forbidden). تأكد من صلاحية الرابط."); 
                 setLoading(false); 
               }
             }
