@@ -178,15 +178,11 @@ export default function RealPlayer() {
       if (isFB) {
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
-        // استخدام رابط فيسبوك القياسي مع تفعيل التحكم الكامل
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0`;
+        // استخدام الرابط المباشر لفيسبوك بدون أي قيود إضافية
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0&container_width=1000`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
-        ifr.style.overflow = "hidden";
-        ifr.setAttribute("scrolling", "no");
-        ifr.setAttribute("frameborder", "0");
-        ifr.setAttribute("allowTransparency", "true");
         ifr.setAttribute("allowFullScreen", "true");
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
         
@@ -286,7 +282,7 @@ export default function RealPlayer() {
         </nav>
 
         <div 
-          className="relative w-full flex-grow bg-black aspect-video lg:aspect-auto"
+          className="relative w-full flex-grow bg-black"
           onClick={() => setShowUnmuteHint(false)}
         >
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
@@ -326,7 +322,6 @@ export default function RealPlayer() {
         :root { --plyr-color-main: #6366f1; }
         .plyr { width: 100%; height: 100%; }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
-        #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); }
         
         /* تنسيق القص الرقمي ليوتيوب بنسبة 20% */
         .youtube-crop-wrapper {
