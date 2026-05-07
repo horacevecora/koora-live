@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
 
-type ServerType = "iframe" | "m3u8" | "youtube" | "facebook";
+type ServerType = "iframe" | "m3u8" | "youtube" | "facebook" | "twitch" | "kick";
 
 interface Server {
   name: string;
@@ -69,14 +69,23 @@ export default function RealPlayer() {
     }
   }, []);
 
-  /* ---- استخراج معرف اليوتيوب من الرابط ---- */
+  /* ---- استخراج المعرفات من الروابط ---- */
   const getYouTubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
     return (match && match[2].length === 11) ? match[2] : null;
   };
 
-  /* ---- التحقق من رابط فيسبوك ---- */
+  const getTwitchChannel = (url: string) => {
+    const match = url.match(/(?:twitch\.tv\/)([a-zA-Z0-9_]+)/);
+    return match ? match[1] : null;
+  };
+
+  const getKickChannel = (url: string) => {
+    const match = url.match(/(?:kick\.com\/)([a-zA-Z0-9_]+)/);
+    return match ? match[1] : null;
+  };
+
   const isFacebookUrl = (url: string) => {
     return url.includes("facebook.com") || url.includes("fb.watch");
   };
@@ -87,31 +96,58 @@ export default function RealPlayer() {
       const container = containerRef.current;
       if (!container) return;
 
-      /* تنظيف سابق */
       container.innerHTML = "";
       destroy();
       setLoading(true);
       setError(null);
 
       const ytId = getYouTubeId(server.url);
+      const twitchChannel = getTwitchChannel(server.url);
+      const kickChannel = getKickChannel(server.url);
       const isFB = isFacebookUrl(server.url);
+
+      /* ── TWITCH ── */
+      if (twitchChannel || server.type === "twitch") {
+        const ifr = document.createElement("iframe");
+        const channel = twitchChannel || server.url;
+        const domain = window.location.hostname;
+        ifr.src = `https://player.twitch.tv/?channel=${channel}&parent=${domain}&autoplay=true&muted=false`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        container.appendChild(ifr);
+        setLoading(false);
+        return;
+      }
+
+      /* ── KICK ── */
+      if (kickChannel || server.type === "kick") {
+        const ifr = document.createElement("iframe");
+        const channel = kickChannel || server.url;
+        ifr.src = `https://player.kick.com/${channel}`;
+        ifr.style.width = "100%";
+        ifr.style.height = "100%";
+        ifr.style.border = "none";
+        ifr.allowFullscreen = true;
+        container.appendChild(ifr);
+        setLoading(false);
+        return;
+      }
 
       /* ── FACEBOOK ── */
       if (isFB || server.type === "facebook") {
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(server.url);
-        // إضافة بارامترات إضافية لمحاولة تحسين المشغل
         ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&width=auto&autoplay=1&mute=0`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
-        // إعطاء كامل الصلاحيات للإطار
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
         ifr.setAttribute("allowfullscreen", "true");
         container.appendChild(ifr);
-        
-        const t = setTimeout(() => setLoading(false), 1500);
-        return () => clearTimeout(t);
+        setTimeout(() => setLoading(false), 1500);
+        return;
       }
 
       /* ── YOUTUBE ── */
@@ -125,9 +161,8 @@ export default function RealPlayer() {
         ifr.style.height = "100%";
         ifr.style.border = "none";
         container.appendChild(ifr);
-        
-        const t = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(t);
+        setTimeout(() => setLoading(false), 1000);
+        return;
       }
 
       /* ── M3U8 ── */
@@ -181,8 +216,7 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       }
 
-      const t = setTimeout(() => setLoading(false), 1500);
-      return () => clearTimeout(t);
+      setTimeout(() => setLoading(false), 1500);
     },
     [destroy]
   );
