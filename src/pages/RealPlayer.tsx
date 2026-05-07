@@ -86,7 +86,7 @@ export default function RealPlayer() {
         const video = document.createElement("video");
         video.playsInline = true;
         video.setAttribute("referrerpolicy", "no-referrer");
-        video.className = "w-full h-full object-fill"; // تغيير هنا لملء المساحة
+        video.className = "w-full h-full object-fill";
         container.appendChild(video);
 
         // تهيئة Plyr
@@ -137,7 +137,7 @@ export default function RealPlayer() {
           ifr.style.width = "100%";
           ifr.style.height = "100%";
           ifr.style.border = "none";
-          ifr.style.objectFit = "fill"; // تغيير هنا لملء المساحة
+          ifr.style.objectFit = "fill";
         }
       } else {
         const ifr = document.createElement("iframe");
@@ -147,7 +147,7 @@ export default function RealPlayer() {
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
-        ifr.style.objectFit = "fill"; // تغيير هنا لملء المساحة
+        ifr.style.objectFit = "fill";
         container.appendChild(ifr);
       }
 
@@ -189,26 +189,29 @@ export default function RealPlayer() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center p-2 sm:p-4 font-sans relative overflow-hidden">
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 pointer-events-none">
-        <div className="flex gap-6 items-center pointer-events-auto">
-          <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
-            <Settings size={8} />
+    <div className="min-h-screen bg-[#020617] flex flex-col items-center p-4 md:p-12 font-sans relative overflow-hidden">
+      {/* أزرار التحكم العلوية */}
+      <div className="w-full max-w-[1000px] flex justify-between items-center mb-4 z-50">
+        <div className="flex gap-4 items-center">
+          <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1 transition-colors">
+            <Settings size={12} />
           </button>
-          <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
-            <Maximize size={28} />
+          <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-slate-900/50 backdrop-blur-md rounded-xl border border-white/10 transition-all hover:scale-110">
+            <Maximize size={24} />
           </button>
         </div>
+        <div className="text-indigo-500 font-black italic text-xl">Koora Live</div>
       </div>
 
-      <div id="main-player-wrapper" className="w-full max-w-[1400px] rounded-2xl overflow-hidden mt-8 shadow-2xl border border-white/5 bg-black flex-grow flex flex-col">
-        <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5" dir="rtl">
+      {/* حاوية المشغل الرئيسية - تم تقليل العرض لزيادة الهوامش */}
+      <div id="main-player-wrapper" className="w-full max-w-[1000px] rounded-[2rem] overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] border border-white/5 bg-black flex flex-col">
+        <nav className="flex flex-wrap bg-[#0f172a] border-b border-white/5" dir="rtl">
           {servers.map((srv, i) => (
             <button
               key={i}
               onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[100px] px-4 py-4 text-sm sm:text-base font-bold transition-all",
+                "flex-1 min-w-[100px] px-4 py-5 text-sm sm:text-base font-bold transition-all border-l border-white/5 last:border-l-0",
                 i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
@@ -217,36 +220,37 @@ export default function RealPlayer() {
           ))}
         </nav>
 
-        <div className="relative w-full flex-grow bg-black aspect-video">
+        <div className="relative w-full bg-black aspect-video">
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center overflow-hidden" />
           
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-              <p className="mt-4 text-slate-300 text-sm">جارٍ تحميل البث...</p>
+              <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ تحميل البث...</p>
             </div>
           )}
 
           {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
               <p className="text-red-400 font-bold mb-4">{error}</p>
-              <button onClick={() => switchServer(activeIndex)} className="px-6 py-2 bg-indigo-600 text-white rounded-lg">إعادة المحاولة</button>
+              <button onClick={() => switchServer(activeIndex)} className="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold">إعادة المحاولة</button>
             </div>
           )}
         </div>
       </div>
 
-      <footer className="w-full max-w-[1400px] mt-auto pt-8 pb-4 flex justify-between items-center text-[11px] text-slate-500 px-4">
-        <span dir="ltr">Koora Live - Kora Online</span>
-        <span dir="rtl">كورة لايف - ماتش لايف</span>
+      {/* تذييل الصفحة */}
+      <footer className="w-full max-w-[1000px] mt-12 pb-8 flex justify-between items-center text-[12px] text-slate-600 px-4 border-t border-white/5 pt-8">
+        <span dir="ltr" className="font-medium tracking-widest">KOORA LIVE OFFICIAL</span>
+        <span dir="rtl" className="font-bold">جميع الحقوق محفوظة © 2026</span>
       </footer>
 
       <style>{`
         :root { --plyr-color-main: #6366f1; }
         .plyr { width: 100%; height: 100%; }
         video, iframe { width: 100% !important; height: 100% !important; object-fit: fill !important; }
-        #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; }
-        #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 56px); aspect-ratio: auto; }
+        #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; max-width: none; }
+        #main-player-wrapper:fullscreen .aspect-video { height: calc(100vh - 64px); aspect-ratio: auto; }
       `}</style>
     </div>
   );
