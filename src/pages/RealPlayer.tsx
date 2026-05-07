@@ -295,7 +295,7 @@ export default function RealPlayer() {
               key={i}
               onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[120px] px-4 py-5 text-sm sm:text-base font-extrabold transition-all flex items-center justify-center gap-2 border-l border-white/5",
+                "flex-1 min-w-[120px] px-4 py-4 text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-2 border-l border-white/5",
                 i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
