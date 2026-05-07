@@ -252,8 +252,8 @@ export default function RealPlayer() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-10 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
-      <div className="absolute top-8 left-12 right-12 flex justify-between items-center z-50 pointer-events-none">
+    <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-4 px-6 md:px-24 pb-4 font-sans relative overflow-hidden">
+      <div className="absolute top-4 left-12 right-12 flex justify-between items-center z-50 pointer-events-none">
         <div className="flex gap-6 items-center pointer-events-auto">
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
@@ -264,10 +264,10 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* المشغل مع تكبير الحجم واستغلال المساحات وإزاحة للأسفل */}
+      {/* المشغل مع تقليل المسافة العلوية */}
       <div 
         id="main-player-wrapper" 
-        className="w-full max-w-[1200px] rounded-2xl mt-10 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/20 shadow-[0_0_60px_-15px_rgba(99,102,241,0.3)]"
+        className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/20 shadow-[0_0_60px_-15px_rgba(99,102,241,0.3)]"
       >
         <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5 rounded-t-2xl overflow-hidden" dir="rtl">
           {servers.map((srv, i) => (
@@ -275,7 +275,7 @@ export default function RealPlayer() {
               key={i}
               onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[100px] px-4 py-5 text-sm sm:text-base font-bold transition-all",
+                "flex-1 min-w-[100px] px-4 py-4 text-sm sm:text-base font-bold transition-all",
                 i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
@@ -316,8 +316,8 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* التذييل بدون خط فاصل وبمسافات أقل */}
-      <footer className="w-full max-w-[1200px] mt-12 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
+      {/* التذييل بمسافات أقل جداً */}
+      <footer className="w-full max-w-[1200px] mt-4 pb-2 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
         <div className="flex justify-between w-full items-center opacity-40">
           <span dir="ltr" className="font-bold tracking-tight">Koora Live - Kora Online</span>
           <span dir="rtl" className="font-bold">كورة لايف - ماتش لايف</span>
