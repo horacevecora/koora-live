@@ -5,7 +5,7 @@ import Plyr from "plyr";
 import Hls from "hls.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize }.tsx";
+import { Settings, Maximize } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
