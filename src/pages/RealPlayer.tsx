@@ -81,9 +81,16 @@ export default function RealPlayer() {
     return match ? match[1] : null;
   };
 
-  const getKickChannel = (url: string) => {
-    const match = url.match(/(?:kick\.com\/)([a-zA-Z0-9_]+)/);
-    return match ? match[1] : null;
+  const getKickInfo = (url: string) => {
+    // التحقق مما إذا كان رابط فيديو
+    const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
+    if (videoMatch) return { type: 'video', id: videoMatch[1] };
+    
+    // التحقق مما إذا كان رابط قناة
+    const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
+    if (channelMatch && channelMatch[1] !== 'video') return { type: 'channel', id: channelMatch[1] };
+    
+    return null;
   };
 
   const isFacebookUrl = (url: string) => {
@@ -103,15 +110,18 @@ export default function RealPlayer() {
 
       const ytId = getYouTubeId(server.url);
       const twitchChannel = getTwitchChannel(server.url);
-      const kickChannel = getKickChannel(server.url);
+      const kickInfo = getKickInfo(server.url);
       const isFB = isFacebookUrl(server.url);
 
-      /* ── TWITCH ── */
-      if (twitchChannel || server.type === "twitch") {
+      /* ── KICK ── */
+      if (kickInfo || server.type === "kick") {
         const ifr = document.createElement("iframe");
-        const channel = twitchChannel || server.url;
-        const domain = window.location.hostname;
-        ifr.src = `https://player.twitch.tv/?channel=${channel}&parent=${domain}&autoplay=true&muted=false`;
+        const info = kickInfo || { type: 'channel', id: server.url };
+        
+        // إذا كان فيديو نستخدم مسار /video/ وإذا كانت قناة نستخدم المسار المباشر
+        const embedPath = info.type === 'video' ? `video/${info.id}` : info.id;
+        
+        ifr.src = `https://player.kick.com/${embedPath}`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -121,11 +131,12 @@ export default function RealPlayer() {
         return;
       }
 
-      /* ── KICK ── */
-      if (kickChannel || server.type === "kick") {
+      /* ── TWITCH ── */
+      if (twitchChannel || server.type === "twitch") {
         const ifr = document.createElement("iframe");
-        const channel = kickChannel || server.url;
-        ifr.src = `https://player.kick.com/${channel}`;
+        const channel = twitchChannel || server.url;
+        const domain = window.location.hostname;
+        ifr.src = `https://player.twitch.tv/?channel=${channel}&parent=${domain}&autoplay=true&muted=false`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
