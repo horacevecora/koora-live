@@ -132,21 +132,24 @@ const RealPlayer = () => {
     <div className="min-h-screen bg-black flex flex-col items-center justify-center relative overflow-hidden">
       <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css" />
       
-      <div className="absolute top-0 left-0 right-0 p-2 flex justify-between items-center z-50 pointer-events-none">
-        <div className="flex gap-2 pointer-events-auto">
+      <div className="absolute top-0 left-0 right-0 p-3 flex justify-between items-center z-50 pointer-events-none">
+        <div className="flex gap-4 items-center pointer-events-auto">
+          {/* زر الإعدادات - صغير جداً وشبه مخفي */}
           <button 
             onClick={handleSettingsClick}
-            className="text-white/5 hover:text-white/20 transition-colors p-1"
+            className="text-white/5 hover:text-white/10 transition-colors p-1"
             title="Settings"
           >
-            <Settings size={10} />
+            <Settings size={8} />
           </button>
+          
+          {/* زر التكبير - واضح وكبير */}
           <button 
             onClick={toggleFullScreen}
-            className="text-white/10 hover:text-white/40 transition-colors p-1"
+            className="text-white/70 hover:text-white transition-colors p-1"
             title="Maximize"
           >
-            <Maximize size={14} />
+            <Maximize size={24} />
           </button>
         </div>
       </div>
