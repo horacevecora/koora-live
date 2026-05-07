@@ -5,7 +5,7 @@ import Plyr from "plyr";
 import Hls from "hls.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize } from "lucide-react";
+import { Settings, Maximize }.tsx";
 import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
@@ -256,13 +256,9 @@ export default function RealPlayer() {
 
       {/* ── العنوان ── */}
       <div className="w-full max-w-4xl mb-6 text-center">
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white">
-          <span className="text-indigo-400">كريم</span> بلاير{" "}
-          <span className="text-indigo-400">برو</span>
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+          Koora Live - Kora Online - كورة لايف - ماتش لايف
         </h1>
-        <p className="mt-2 text-sm text-slate-400">
-          Plyr Edition – جميع السيرفرات في مكان واحد
-        </p>
       </div>
 
       {/* ── الغلاف الرئيسي ── */}
@@ -367,15 +363,7 @@ export default function RealPlayer() {
 
       {/* ── التذييل ── */}
       <footer className="mt-6 text-center text-xs text-slate-500">
-        Karim Player Pro &copy; {new Date().getFullYear()} · مبني على{" "}
-        <a
-          href="https://plyr.io"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-indigo-400 hover:underline"
-        >
-          Plyr
-        </a>
+        Koora Live - Kora Online - كورة لايف - ماتش لايف
       </footer>
 
       {/* ── تخصيص Plyr CSS عبر متغيرات ── */}

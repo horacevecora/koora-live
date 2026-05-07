@@ -11,8 +11,8 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-950 text-white p-4">
       <div className="text-center max-w-2xl">
-        <h1 className="text-5xl font-bold mb-6 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-          KARIM PLAYER PRO
+        <h1 className="text-4xl md:text-5xl font-bold mb-6 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+          Koora Live - Kora Online - كورة لايف - ماتش لايف
         </h1>
         <p className="text-xl text-slate-400 mb-10">
           مرحباً بك في تطبيق البث المباشر. اضغط على الزر أدناه لفتح مشغل الفيديو.
@@ -24,7 +24,7 @@ const Index = () => {
           className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-6 rounded-full text-xl font-bold transition-all transform hover:scale-105 flex items-center gap-3"
         >
           <Play fill="currentColor" />
-          فتح المشغل (real.html)
+          فتح المشغل
         </Button>
       </div>
       
