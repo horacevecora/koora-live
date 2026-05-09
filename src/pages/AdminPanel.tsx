@@ -55,7 +55,8 @@ const AdminPanel = () => {
 
   // تحميل قنوات الصفحة النشطة
   useEffect(() => {
-    const storageKey = `servers_${activePageSlug}`;
+    // استخدام المفتاح القديم للصفحة الرئيسية لضمان استعادة الروابط
+    const storageKey = activePageSlug === 'default' ? 'player_servers' : `servers_${activePageSlug}`;
     const savedServers = localStorage.getItem(storageKey);
     if (savedServers) {
       setServers(JSON.parse(savedServers));
@@ -104,7 +105,8 @@ const AdminPanel = () => {
   // وظائف القنوات
   const saveServers = (updated: Server[]) => {
     setServers(updated);
-    localStorage.setItem(`servers_${activePageSlug}`, JSON.stringify(updated));
+    const storageKey = activePageSlug === 'default' ? 'player_servers' : `servers_${activePageSlug}`;
+    localStorage.setItem(storageKey, JSON.stringify(updated));
   };
 
   const handleSubmit = () => {

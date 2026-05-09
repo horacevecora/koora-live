@@ -26,9 +26,9 @@ export default function RealPlayer() {
   const { slug } = useParams();
   const location = useLocation();
   
-  // تحديد مفتاح التخزين بناءً على الرابط
+  // تحديد مفتاح التخزين: إذا كانت الصفحة الرئيسية نستخدم المفتاح القديم لضمان استعادة البيانات
   const pageKey = slug || (location.pathname === '/real.html' ? 'default' : 'unknown');
-  const storageKey = `servers_${pageKey}`;
+  const storageKey = pageKey === 'default' ? 'player_servers' : `servers_${pageKey}`;
 
   const containerRef = useRef<HTMLDivElement>(null);
   const plyrRef = useRef<Plyr | null>(null);
@@ -56,7 +56,7 @@ export default function RealPlayer() {
         buildPlayer(parsed[0], false, false);
       }
     } else {
-      // سيرفر افتراضي إذا كانت الصفحة فارغة
+      // سيرفر افتراضي إذا كانت الصفحة فارغة تماماً
       const defaultServers: Server[] = [
         {
           name: "سيرفر 1 – beIN HD1",
