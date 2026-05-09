@@ -26,6 +26,7 @@ const Index = () => {
         <link rel="canonical" href={`https://${window.location.hostname}/`} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
+        <meta property="og:image" content="/favicon.svg" />
         <meta property="og:type" content="website" />
       </Helmet>
 
