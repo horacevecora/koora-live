@@ -251,7 +251,6 @@ export default function RealPlayer() {
         return;
       }
 
-      // ... (بقية منطق المشغل للـ iframe و YouTube و Twitch و Kick و Facebook)
       const getYouTubeId = (url: string) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
@@ -364,7 +363,8 @@ export default function RealPlayer() {
 
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
-      <div className="absolute top-4 left-12 right-12 flex justify-between items-center z-50 pointer-events-none">
+      {/* شريط التحكم العلوي - تم نقله لليسار */}
+      <div className="absolute top-4 left-6 md:left-24 flex items-center z-50 pointer-events-none">
         <div className="flex gap-4 items-center pointer-events-auto">
           <button onClick={() => navigate('/')} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="الرئيسية">
             <Home size={24} />
