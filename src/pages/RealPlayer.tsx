@@ -115,15 +115,20 @@ export default function RealPlayer() {
       setShowUnmuteHint(false);
       
       const url = server.url.trim();
-      const isIPTV = (url.includes(":") && url.split(":").length > 2) || 
-                     (url.match(/\/\d+\/\d+\/\d+$/)) ||
-                     url.includes(".ts") || 
-                     url.includes("extension=ts");
       
-      const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache");
+      // منطق متطور للتعرف على روابط IPTV و MPEG-TS
+      const isTS = url.includes(".ts") || 
+                   url.includes("extension=ts") || 
+                   url.includes(":2086") || 
+                   url.includes(":8080") ||
+                   url.includes("/live.php");
 
-      /* 1. دعم روابط البث المباشر الخام */
-      if ((isRawStream || isIPTV) && !url.includes(".m3u8") && !url.includes("<iframe")) {
+      const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
+      
+      const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS;
+
+      /* 1. دعم روابط البث المباشر الخام و IPTV (TS) */
+      if (isRawStream && !isM3U8 && !url.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.muted = true;
@@ -136,12 +141,26 @@ export default function RealPlayer() {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        if (url.includes(".ts") && mpegts.getFeatureList().mseLivePlayback) {
-          const player = mpegts.createPlayer({ type: 'mse', isLive: true, url: url });
-          mpegtsRef.current = player;
-          player.attachMediaElement(video);
-          player.load();
-          player.play();
+        // استخدام mpegts.js للروابط التي تبدو كـ TS
+        if (isTS && mpegts.getFeatureList().mseLivePlayback) {
+          try {
+            const player = mpegts.createPlayer({ 
+              type: 'mse', 
+              isLive: true, 
+              url: url,
+              cors: true
+            });
+            mpegtsRef.current = player;
+            player.attachMediaElement(video);
+            player.load();
+            // استخدام Promise.resolve للتعامل مع void | Promise<void>
+            Promise.resolve(player.play()).then(() => {
+              if (video.muted) setShowUnmuteHint(true);
+            }).catch(() => setShowUnmuteHint(true));
+          } catch (e) {
+            video.src = url;
+            video.play().catch(() => setShowUnmuteHint(true));
+          }
         } else {
           video.src = url;
           video.play().then(() => {
@@ -163,7 +182,7 @@ export default function RealPlayer() {
       }
 
       /* 2. روابط M3U8 المباشرة */
-      if (server.type === "m3u8" || url.includes(".m3u8")) {
+      if (isM3U8) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.muted = true;
@@ -223,7 +242,6 @@ export default function RealPlayer() {
       if (kickInfo) {
         const ifr = document.createElement("iframe");
         const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
-        // محاولة طلب الصوت ولكن المتصفح قد يفرضه صامتاً
         ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=false`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
