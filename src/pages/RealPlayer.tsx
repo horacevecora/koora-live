@@ -303,7 +303,9 @@ export default function RealPlayer() {
         if (serversData && serversData.length > 0) {
           setServers(serversData);
         } else {
-          setError("لا توجد قنوات مضافة لهذه الصفحة");
+          // إذا كانت الصفحة موجودة ولكن بدون سيرفرات، نضع السيرفر الافتراضي
+          const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
+          setServers(def);
         }
       } catch (err) {
         console.error("Error loading player data:", err);
