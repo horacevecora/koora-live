@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert, Zap } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert, Zap, LockOpen } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -99,14 +99,6 @@ export default function RealPlayer() {
     }, 2000);
   };
 
-  const getCleanLink = (url: string) => {
-    if (url.includes('<iframe')) {
-      const match = url.match(/src=["']([^"']+)["']/);
-      return match ? match[1] : url;
-    }
-    return url;
-  };
-
   const buildPlayer = useCallback(
     (server: Server, forceNative = false, shouldUnmute = hasInteracted) => {
       const container = containerRef.current;
@@ -119,7 +111,7 @@ export default function RealPlayer() {
       setShowUnmuteHint(false);
       setIsMixedContent(false);
       
-      const url = server.url.trim();
+      let url = server.url.trim();
       const isHttps = window.location.protocol === 'https:';
       const isUrlHttp = url.startsWith('http:');
       
@@ -251,7 +243,7 @@ export default function RealPlayer() {
         return;
       }
 
-      // باقي أنواع الروابط (YouTube, Twitch, Iframe...)
+      // باقي أنواع الروابط
       const getYouTubeId = (url: string) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
@@ -381,7 +373,7 @@ export default function RealPlayer() {
       if (servers[index]) {
         setHasInteracted(true);
         setActiveIndex(index);
-        setIsNativeMode(false); // إعادة تعيين الوضع عند تغيير السيرفر
+        setIsNativeMode(false);
         buildPlayer(servers[index], false, true);
       }
     },
@@ -393,7 +385,6 @@ export default function RealPlayer() {
     setIsNativeMode(newMode);
     setHasInteracted(true);
     if (servers[activeIndex]) {
-      // نستخدم setTimeout لضمان تحديث الحالة قبل إعادة البناء
       setTimeout(() => buildPlayer(servers[activeIndex], newMode, true), 10);
     }
   };
@@ -484,22 +475,30 @@ export default function RealPlayer() {
           )}
 
           {isMixedContent && !loading && !error && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-amber-500/95 text-black p-4 rounded-2xl flex flex-col gap-2 text-[10px] font-bold shadow-2xl border border-amber-400/50 max-w-[90%] md:max-w-md">
-              <div className="flex items-center gap-2 text-amber-900">
-                <ShieldAlert size={18} />
-                <span>تنبيه أمني من المتصفح (Mixed Content)</span>
+            <div className="absolute inset-0 z-20 bg-black/90 flex items-center justify-center p-4">
+              <div className="bg-amber-500 text-black p-6 rounded-[2rem] flex flex-col gap-4 text-right shadow-2xl border-4 border-white/20 max-w-lg animate-in fade-in zoom-in duration-300">
+                <div className="flex items-center justify-between gap-4">
+                  <ShieldAlert size={40} className="shrink-0" />
+                  <h3 className="text-xl font-black">تنبيه أمني: المتصفح يمنع البث</h3>
+                </div>
+                <div className="h-px bg-black/10 w-full" />
+                <p className="text-sm font-bold leading-loose">
+                  هذا الرابط يعمل بنظام <code className="bg-black/10 px-1 rounded">http</code> القديم، وبما أن موقعك يعمل بنظام <code className="bg-black/10 px-1 rounded">https</code> الآمن، فإن المتصفح يمنعه تلقائياً.
+                </p>
+                <div className="bg-white/20 p-4 rounded-2xl space-y-2">
+                  <p className="font-black text-xs underline mb-2">الحل لتشغيل البث الآن:</p>
+                  <ol className="text-xs font-bold space-y-2 list-decimal list-inside">
+                    <li>اضغط على أيقونة القفل 🔒 أو الإعدادات بجانب رابط الموقع في الأعلى.</li>
+                    <li>اختر <span className="bg-black/10 px-1">إعدادات الموقع</span> (Site Settings).</li>
+                    <li>ابحث عن <span className="bg-black/10 px-1">المحتوى غير الآمن</span> (Insecure content).</li>
+                    <li>غير الخيار إلى <span className="underline font-black">سماح</span> (Allow).</li>
+                    <li>أعد تحميل الصفحة وسيعمل البث فوراً.</li>
+                  </ol>
+                </div>
+                <button onClick={() => window.location.reload()} className="w-full bg-black text-white py-3 rounded-xl font-black flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                  <RefreshCw size={18} /> تحديث الصفحة بعد الضبط
+                </button>
               </div>
-              <p className="text-amber-950 leading-relaxed">
-                هذا الرابط يبدأ بـ <code className="bg-amber-900/10 px-1 rounded">http</code> والمتصفح يمنعه تلقائياً. لتشغيله:
-                <br />
-                1. اضغط على أيقونة القفل 🔒 بجانب رابط الموقع في الأعلى.
-                <br />
-                2. اختر <span className="underline">إعدادات الموقع</span> (Site Settings).
-                <br />
-                3. ابحث عن <span className="underline">المحتوى غير الآمن</span> (Insecure content) واجعله <span className="font-black">سماح</span> (Allow).
-                <br />
-                4. أعد تحميل الصفحة وسيعمل البث فوراً.
-              </p>
             </div>
           )}
 
@@ -522,7 +521,6 @@ export default function RealPlayer() {
         </div>
       </article>
 
-      {/* زر تبديل الوضع للروابط المباشرة */}
       {isCurrentStream && !loading && !error && (
         <div className="mt-6 flex flex-col items-center gap-3">
           <button 
