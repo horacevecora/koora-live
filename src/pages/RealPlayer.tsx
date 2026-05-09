@@ -128,7 +128,8 @@ export default function RealPlayer() {
         video.playsInline = true;
         video.muted = true;
         video.autoplay = true;
-        video.className = "w-full h-full";
+        video.controls = true; // تفعيل أدوات التحكم الأصلية لتجنب أخطاء Plyr
+        video.className = "w-full h-full bg-black";
         video.setAttribute("crossorigin", "anonymous");
         video.setAttribute("referrerpolicy", "no-referrer");
         container.appendChild(video);
@@ -137,18 +138,7 @@ export default function RealPlayer() {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        // إذا كان الرابط من المنفذ 2086 (الذي يسبب مشكلة HEVC)، نستخدم التشغيل المباشر فوراً
-        if (isIPTVPort) {
-          video.src = url;
-          video.play().then(() => {
-            if (video.muted) setShowUnmuteHint(true);
-            setLoading(false);
-          }).catch(() => {
-            setShowUnmuteHint(true);
-            setLoading(false);
-          });
-        } 
-        else if (isTS && mpegts.getFeatureList().mseLivePlayback) {
+        if (isTS && mpegts.getFeatureList().mseLivePlayback) {
           try {
             const player = mpegts.createPlayer({ 
               type: 'mpegts', 
@@ -168,7 +158,6 @@ export default function RealPlayer() {
             
             player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
               console.warn("MPEGTS Error, falling back to native:", type, detail);
-              // إذا حدث خطأ (مثل خطأ الكوديك hvc1)، نتحول للتشغيل المباشر
               video.src = url;
               video.play().catch(() => {});
             });
@@ -196,16 +185,7 @@ export default function RealPlayer() {
             setLoading(false);
           });
         }
-
-        // استخدام Plyr فقط للتحكم، مع التأكد من عدم تداخله مع الفيديو المباشر
-        const plyr = new Plyr(video, {
-          controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
-          ratio: "16:9",
-          autoplay: true,
-          muted: true,
-          blankVideo: ""
-        });
-        plyrRef.current = plyr;
+        // ملاحظة: لم نقم بربط Plyr هنا لتجنب خطأ NotSupportedError
         return;
       }
 
@@ -357,16 +337,16 @@ export default function RealPlayer() {
   );
 
   const handleUnmute = () => {
-    if (plyrRef.current) {
-      plyrRef.current.muted = false;
-      plyrRef.current.volume = 1;
-      plyrRef.current.play();
-    }
     const video = containerRef.current?.querySelector('video');
     if (video) {
       video.muted = false;
       video.volume = 1;
       video.play().catch(() => {});
+    }
+    if (plyrRef.current) {
+      plyrRef.current.muted = false;
+      plyrRef.current.volume = 1;
+      plyrRef.current.play();
     }
     setShowUnmuteHint(false);
   };
@@ -483,6 +463,9 @@ export default function RealPlayer() {
           top: -10%;
           left: -10%;
           border: none;
+        }
+        video::-webkit-media-controls-panel {
+          background-image: linear-gradient(transparent, rgba(0,0,0,0.5)) !important;
         }
       `}</style>
     </div>
