@@ -106,7 +106,7 @@ export default function RealPlayer() {
 
   /* ---- بناء المشغّل حسب نوع السيرفر ---- */
   const buildPlayer = useCallback(
-    (server: Server) => {
+    (server: Server, forceNative = false) => {
       const container = containerRef.current;
       if (!container) return;
 
@@ -140,7 +140,20 @@ export default function RealPlayer() {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        if (isTS && mpegts.getFeatureList().mseLivePlayback) {
+        // إذا طلبنا التشغيل الأصلي (Native) أو كان المتصفح لا يدعم MSE
+        if (forceNative || !mpegts.getFeatureList().mseLivePlayback) {
+          video.src = url;
+          video.play().then(() => {
+            if (video.muted) setShowUnmuteHint(true);
+            setLoading(false);
+          }).catch(() => {
+            setShowUnmuteHint(true);
+            setLoading(false);
+          });
+          return;
+        }
+
+        if (isTS) {
           try {
             const player = mpegts.createPlayer({ 
               type: 'mpegts', 
@@ -162,11 +175,10 @@ export default function RealPlayer() {
             player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
               console.warn("MPEGTS Error:", type, detail);
               
-              // التحقق من خطأ الكوديك (H.265/HEVC)
+              // إذا كان الخطأ بسبب الكوديك، نحاول التشغيل الأصلي فوراً
               if (detail === mpegts.ErrorDetails.MEDIA_MSE_ERROR || type.includes('unsupported')) {
-                setIsCodecUnsupported(true);
-                setError("المتصفح لا يدعم كوديك الفيديو (H.265). جرب متصفحاً آخر أو سيرفر مختلف.");
-                setLoading(false);
+                console.log("Codec unsupported in MSE, trying Native fallback...");
+                buildPlayer(server, true); // إعادة المحاولة بنظام Native
                 return;
               }
 
@@ -174,8 +186,7 @@ export default function RealPlayer() {
                 setRetryCount(prev => prev + 1);
                 setTimeout(() => buildPlayer(server), 3000);
               } else {
-                video.src = url;
-                video.play().catch(() => {});
+                buildPlayer(server, true); // الفشل النهائي يحولنا لـ Native
               }
             });
 
@@ -184,13 +195,11 @@ export default function RealPlayer() {
               setLoading(false);
               setRetryCount(0);
             }).catch((e) => {
-              console.error("Play failed:", e);
-              setLoading(false);
+              console.error("Play failed, trying Native:", e);
+              buildPlayer(server, true);
             });
           } catch (e) {
-            video.src = url;
-            video.play().catch(() => {});
-            setLoading(false);
+            buildPlayer(server, true);
           }
         } else {
           video.src = url;
@@ -466,7 +475,10 @@ export default function RealPlayer() {
                 </button>
               )}
               {isCodecUnsupported && (
-                <p className="text-slate-500 text-xs">يرجى تجربة سيرفر آخر يدعم كوديك H.264</p>
+                <div className="space-y-2">
+                  <p className="text-slate-500 text-xs">يرجى تجربة متصفح Edge أو Safari لدعم كوديك H.265</p>
+                  <button onClick={() => buildPlayer(servers[activeIndex], true)} className="text-indigo-400 underline text-sm">محاولة التشغيل المباشر (Native)</button>
+                </div>
               )}
             </div>
           )}
