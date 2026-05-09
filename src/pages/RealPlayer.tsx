@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2 } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
@@ -135,23 +135,24 @@ export default function RealPlayer() {
         video.autoplay = true;
         video.className = "w-full h-full";
         video.setAttribute("crossorigin", "anonymous");
+        video.setAttribute("referrerpolicy", "no-referrer");
         container.appendChild(video);
 
         video.onvolumechange = () => {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        // استخدام mpegts.js للروابط التي تبدو كـ TS مع إعدادات محسنة للصورة
+        // محاولة التشغيل باستخدام mpegts.js أولاً
         if (isTS && mpegts.getFeatureList().mseLivePlayback) {
           try {
             const player = mpegts.createPlayer({ 
-              type: 'mpegts', // تغيير النوع لضمان معالجة الفيديو
+              type: 'mpegts', 
               isLive: true, 
               url: url,
               cors: true
             }, {
               enableWorker: true,
-              enableStashBuffer: false, // تقليل التأخير لتحسين مزامنة الصورة
+              enableStashBuffer: false,
               stashInitialSize: 128,
               lazyLoad: false
             });
@@ -161,10 +162,14 @@ export default function RealPlayer() {
             
             Promise.resolve(player.play()).then(() => {
               if (video.muted) setShowUnmuteHint(true);
-            }).catch(() => setShowUnmuteHint(true));
+            }).catch(() => {
+              // إذا فشل المشغل الذكي، جرب التشغيل المباشر
+              video.src = url;
+              video.play().catch(() => setShowUnmuteHint(true));
+            });
 
-            // مراقبة الأخطاء لإعادة التشغيل إذا توقفت الصورة
             player.on(mpegts.Events.ERROR, () => {
+              // في حال حدوث خطأ في المكتبة، ننتقل للتشغيل المباشر
               video.src = url;
               video.play().catch(() => {});
             });
@@ -343,11 +348,13 @@ export default function RealPlayer() {
     if (plyrRef.current) {
       plyrRef.current.muted = false;
       plyrRef.current.volume = 1;
+      plyrRef.current.play();
     }
     const video = containerRef.current?.querySelector('video');
     if (video) {
       video.muted = false;
       video.volume = 1;
+      video.play().catch(() => {});
     }
     setShowUnmuteHint(false);
   };
@@ -429,7 +436,9 @@ export default function RealPlayer() {
           {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
               <p className="text-red-400 font-black mb-4">{error}</p>
-              <button onClick={() => switchServer(activeIndex)} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold">إعادة المحاولة</button>
+              <button onClick={() => switchServer(activeIndex)} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 mx-auto">
+                <RefreshCw size={18} /> إعادة المحاولة
+              </button>
             </div>
           )}
         </div>
