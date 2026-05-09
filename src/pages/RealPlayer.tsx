@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
@@ -297,7 +297,6 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       } else if (isFB) {
         const ifr = document.createElement("iframe");
-        // استخدام mute=0 و autoplay=true لضمان أفضل توافق مع فيسبوك
         const fbMute = shouldUnmute ? "0" : "1";
         ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=true&mute=${fbMute}&allowfullscreen=true&adapt_to_wrapper=true`;
         ifr.style.width = "100%"; 
@@ -309,6 +308,8 @@ export default function RealPlayer() {
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"; 
         ifr.allowFullscreen = true;
         container.appendChild(ifr);
+        // إظهار تنبيه الصوت لفيسبوك بعد قليل من التحميل
+        setTimeout(() => setShowUnmuteHint(true), 2000);
       } else if (ytId) {
         const wrapper = document.createElement("div");
         wrapper.className = "youtube-crop-wrapper";
@@ -379,6 +380,8 @@ export default function RealPlayer() {
     else { document.exitFullscreen(); }
   };
 
+  const isCurrentFB = servers[activeIndex] && isFacebookUrl(servers[activeIndex].url);
+
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       <div className="absolute top-4 left-12 right-12 flex justify-between items-center z-50 pointer-events-none">
@@ -430,13 +433,27 @@ export default function RealPlayer() {
             </div>
           )}
 
-          {showUnmuteHint && !loading && (
+          {/* تنبيه الصوت العام */}
+          {showUnmuteHint && !loading && !isCurrentFB && (
             <div 
               className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors"
               onClick={(e) => { e.stopPropagation(); handleUnmute(); }}
             >
               <Volume2 size={20} />
               <span className="font-black text-sm">انقر لتشغيل الصوت</span>
+            </div>
+          )}
+
+          {/* تنبيه الصوت المخصص لفيسبوك */}
+          {showUnmuteHint && !loading && isCurrentFB && (
+            <div className="absolute bottom-12 right-4 z-30 flex flex-col items-end pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <div className="bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 mb-1 border border-white/20">
+                <Volume2 size={16} className="animate-pulse" />
+                <span className="font-black text-[11px] whitespace-nowrap">شغل الصوت من هنا</span>
+              </div>
+              <div className="mr-4 text-indigo-500 animate-bounce">
+                <ArrowDownRight size={24} />
+              </div>
             </div>
           )}
 
