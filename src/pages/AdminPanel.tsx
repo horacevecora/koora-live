@@ -229,7 +229,6 @@ const AdminPanel = () => {
     updatedServers[index].sort_order = updatedServers[newIndex].sort_order;
     updatedServers[newIndex].sort_order = temp;
 
-    // Update in DB
     const { error: err1 } = await supabase.from('servers').update({ sort_order: updatedServers[index].sort_order }).eq('id', updatedServers[index].id);
     const { error: err2 } = await supabase.from('servers').update({ sort_order: updatedServers[newIndex].sort_order }).eq('id', updatedServers[newIndex].id);
 
@@ -272,7 +271,6 @@ const AdminPanel = () => {
 
         setIsLoading(true);
         
-        // Import Pages
         for (const page of backup.pages) {
           await supabase.from('pages').upsert({ 
             name: page.name, 
@@ -280,10 +278,8 @@ const AdminPanel = () => {
           }, { onConflict: 'slug' });
         }
 
-        // Re-fetch pages to get correct IDs
         const { data: currentPages } = await supabase.from('pages').select('*');
         
-        // Import Servers
         for (const server of backup.servers) {
           const originalPage = backup.pages.find((p: any) => p.id === server.page_id);
           const currentPage = currentPages?.find(p => p.slug === originalPage?.slug);
@@ -428,12 +424,52 @@ const AdminPanel = () => {
           </div>
         </div>
 
+        {/* Top Section: Backup & Bulk Add */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Backup Section */}
+          <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold flex items-center gap-2">النسخ الاحتياطي</CardTitle>
+            </CardHeader>
+            <CardContent className="grid grid-cols-2 gap-2">
+              <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-xs h-12 gap-2">
+                <Download size={16} /> تصدير
+              </Button>
+              <div className="relative">
+                <input type="file" accept=".json" onChange={importBackup} className="absolute inset-0 opacity-0 cursor-pointer" />
+                <Button variant="outline" className="w-full bg-slate-900/50 border-slate-800 text-xs h-12 gap-2">
+                  <Upload size={16} /> استيراد
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Bulk Add Section */}
+          <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+            <CardHeader>
+              <CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
+              <p className="text-[10px] text-slate-500">أضف قنوات متعددة: الاسم = الرابط (كل قناة في سطر)</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-2">
+                <Textarea 
+                  placeholder={"Quran Live = https://www.twitch.tv/quran_live24\nAljazeera = https://www.youtube.com/watch?v=N8xxOD0nT1Y"} 
+                  value={bulkInput}
+                  onChange={(e) => setBulkInput(e.target.value)}
+                  className="bg-slate-900/80 border-slate-700 min-h-[80px] text-[10px] text-right flex-grow"
+                />
+                <Button onClick={handleBulkAdd} className="bg-indigo-600 hover:bg-indigo-700 font-bold h-auto px-6">
+                  إضافة
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Right Column: Pages & Bulk */}
+          {/* Right Column: Pages */}
           <div className="lg:col-span-4 space-y-8">
-            
-            {/* Pages Section */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader>
                 <CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
@@ -463,43 +499,6 @@ const AdminPanel = () => {
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Backup Section */}
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold flex items-center gap-2">النسخ الاحتياطي</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2">
-                <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-xs h-12 gap-2">
-                  <Download size={16} /> تصدير
-                </Button>
-                <div className="relative">
-                  <input type="file" accept=".json" onChange={importBackup} className="absolute inset-0 opacity-0 cursor-pointer" />
-                  <Button variant="outline" className="w-full bg-slate-900/50 border-slate-800 text-xs h-12 gap-2">
-                    <Upload size={16} /> استيراد
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Bulk Add Section */}
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
-                <p className="text-[10px] text-slate-500">أضف قنوات متعددة: الاسم = الرابط (كل قناة في سطر)</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea 
-                  placeholder={"Quran Live 24h/24h (twitch.tv) = https://www.twitch.tv/quran_live24\nAljazeera News Arabic (Youtube LIVE) = https://www.youtube.com/watch?v=N8xxOD0nT1Y\n..."} 
-                  value={bulkInput}
-                  onChange={(e) => setBulkInput(e.target.value)}
-                  className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right"
-                />
-                <Button onClick={handleBulkAdd} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-12">
-                  إضافة الكل
-                </Button>
               </CardContent>
             </Card>
           </div>
