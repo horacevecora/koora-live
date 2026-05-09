@@ -1,31 +1,41 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- الخلفية الدائرية مع توهج خفيف -->
-  <circle cx="256" cy="256" r="250" fill="#020617" />
-  <circle cx="256" cy="256" r="240" stroke="#00e676" stroke-width="12" stroke-dasharray="20 10" opacity="0.5" />
+  <!-- دائرة الخلفية البيضاء (جسم الكرة) -->
+  <circle cx="256" cy="256" r="240" fill="white" stroke="#020617" stroke-width="4"/>
   
-  <!-- جسم كرة القدم الرئيسي -->
-  <circle cx="256" cy="256" r="200" fill="white" />
-  
-  <!-- نمط المضلعات (الخماسي) المميز لكرة القدم -->
+  <!-- المضلعات السوداء الكلاسيكية (الخماسية) -->
   <g fill="#020617">
     <!-- المضلع المركزي -->
-    <path d="M256 180L320 226V300L256 346L192 300V226L256 180Z" fill="#00e676" />
+    <path d="M256 160L330 215V300L256 355L182 300V215L256 160Z" />
     
-    <!-- المضلعات المحيطة -->
-    <path d="M256 56L300 100H212L256 56Z" />
-    <path d="M456 256L412 212V300L456 256Z" />
-    <path d="M56 256L100 300V212L56 256Z" />
-    <path d="M256 456L212 412H300L256 456Z" />
+    <!-- المضلعات العلوية والجانبية -->
+    <path d="M256 16L310 60H202L256 16Z" />
+    <path d="M496 256L440 210V302L496 256Z" />
+    <path d="M16 256L72 302V210L16 256Z" />
+    <path d="M256 496L202 452H310L256 496Z" />
     
-    <!-- خطوط الربط بين المضلعات لإعطاء شكل الكرة -->
-    <path d="M320 226L412 212" stroke="#020617" stroke-width="8" />
-    <path d="M320 300L412 300" stroke="#020617" stroke-width="8" />
-    <path d="M256 346L256 412" stroke="#020617" stroke-width="8" />
-    <path d="M192 300L100 300" stroke="#020617" stroke-width="8" />
-    <path d="M192 226L100 212" stroke="#020617" stroke-width="8" />
-    <path d="M256 180L256 100" stroke="#020617" stroke-width="8" />
+    <!-- مضلعات الزوايا -->
+    <path d="M410 80L450 130L380 140L410 80Z" />
+    <path d="M102 80L62 130L132 140L102 80Z" />
+    <path d="M410 432L450 382L380 372L410 432Z" />
+    <path d="M102 432L62 382L132 372L102 432Z" />
   </g>
   
-  <!-- تأثير لمعان خفيف -->
-  <path d="M140 140C160 120 200 100 256 100" stroke="white" stroke-width="15" stroke-linecap="round" opacity="0.8" />
+  <!-- خطوط الربط لإعطاء الشكل الكروي -->
+  <g stroke="#020617" stroke-width="6" stroke-linecap="round">
+    <path d="M256 160V60" />
+    <path d="M330 215L440 210" />
+    <path d="M330 300L440 302" />
+    <path d="M256 355V452" />
+    <path d="M182 300L72 302" />
+    <path d="M182 215L72 210" />
+  </g>
+  
+  <!-- ظل خفيف لإعطاء عمق (3D) -->
+  <defs>
+    <radialGradient id="ballShadow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="80%" stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.2"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="240" fill="url(#ballShadow)"/>
 </svg>
