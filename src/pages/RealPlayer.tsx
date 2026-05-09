@@ -137,8 +137,18 @@ export default function RealPlayer() {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        // لروابط المنفذ 2086 أو 8080، نستخدم إعدادات mpegts.js المتقدمة جداً
-        if (isTS && mpegts.getFeatureList().mseLivePlayback) {
+        // إذا كان الرابط من المنفذ 2086 (الذي يسبب مشكلة HEVC)، نستخدم التشغيل المباشر فوراً
+        if (isIPTVPort) {
+          video.src = url;
+          video.play().then(() => {
+            if (video.muted) setShowUnmuteHint(true);
+            setLoading(false);
+          }).catch(() => {
+            setShowUnmuteHint(true);
+            setLoading(false);
+          });
+        } 
+        else if (isTS && mpegts.getFeatureList().mseLivePlayback) {
           try {
             const player = mpegts.createPlayer({ 
               type: 'mpegts', 
@@ -149,19 +159,24 @@ export default function RealPlayer() {
               enableWorker: true,
               enableStashBuffer: false,
               stashInitialSize: 128,
-              liveBufferLatencyChasing: true, // مطاردة التأخير لضمان مزامنة الفيديو
-              autoCleanupSourceBuffer: true, // تنظيف الذاكرة لضمان عدم توقف الصورة
-              lazyLoad: false
+              liveBufferLatencyChasing: true,
+              autoCleanupSourceBuffer: true
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
             player.load();
             
+            player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
+              console.warn("MPEGTS Error, falling back to native:", type, detail);
+              // إذا حدث خطأ (مثل خطأ الكوديك hvc1)، نتحول للتشغيل المباشر
+              video.src = url;
+              video.play().catch(() => {});
+            });
+
             Promise.resolve(player.play()).then(() => {
               if (video.muted) setShowUnmuteHint(true);
               setLoading(false);
             }).catch(() => {
-              // Fallback: تشغيل مباشر بدون مكتبة
               video.src = url;
               video.play().catch(() => {});
               setLoading(false);
@@ -182,13 +197,13 @@ export default function RealPlayer() {
           });
         }
 
-        // استخدام Plyr مع تعطيل الميزات التي تسبب أخطاء CORS
+        // استخدام Plyr فقط للتحكم، مع التأكد من عدم تداخله مع الفيديو المباشر
         const plyr = new Plyr(video, {
           controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
           ratio: "16:9",
           autoplay: true,
           muted: true,
-          blankVideo: "" // تعطيل تحميل blank.mp4 المسبب للخطأ في صورتك
+          blankVideo: ""
         });
         plyrRef.current = plyr;
         return;
