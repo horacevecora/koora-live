@@ -341,7 +341,7 @@ const AdminPanel = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea 
-                  placeholder={"Quran Live 24h/24h (twitch.tv) = https://www.twitch.tv/quran_live24\nAljazeera News Arabic (Youtube LIVE) = https://www.youtube.com/watch?v=N8xxOD0nT1Y\n..."} 
+                  placeholder={"Server 1 = https://example.com/live.m3u8\nServer 2 = https://example.com/embed\n..."} 
                   value={bulkInput}
                   onChange={(e) => setBulkInput(e.target.value)}
                   className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right"
