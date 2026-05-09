@@ -112,11 +112,10 @@ export default function RealPlayer() {
       destroy();
       setLoading(true);
       setError(null);
-      setShowUnmuteHint(false);
+      setShowUnmuteHint(true); // إظهار تلميح الصوت دائماً عند التشغيل التلقائي المكتوم
 
       const url = server.url.trim();
 
-      // التحقق مما إذا كان الرابط يبدو كرابط IPTV أو بث مباشر خام
       const isIPTV = (url.includes(":") && url.split(":").length > 2) || 
                      (url.match(/\/\d+\/\d+\/\d+$/)) ||
                      url.includes(".ts") || 
@@ -124,15 +123,16 @@ export default function RealPlayer() {
       
       const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache");
 
-      /* 1. دعم روابط البث المباشر الخام (مثل الرابط الذي أرسلته) */
+      /* 1. دعم روابط البث المباشر الخام */
       if ((isRawStream || isIPTV) && !url.includes(".m3u8") && !url.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
+        video.muted = true; // كتم الصوت للتشغيل التلقائي
+        video.autoplay = true;
         video.className = "w-full h-full";
         video.setAttribute("crossorigin", "anonymous");
         container.appendChild(video);
 
-        // محاولة استخدام mpegts أولاً إذا كان الرابط يحتوي على .ts
         if (url.includes(".ts") && mpegts.getFeatureList().mseLivePlayback) {
           const player = mpegts.createPlayer({ type: 'mse', isLive: true, url: url });
           mpegtsRef.current = player;
@@ -140,17 +140,15 @@ export default function RealPlayer() {
           player.load();
           player.play();
         } else {
-          // إذا كان رابط بث مباشر عادي (مثل الرابط المرسل)، نستخدم المشغل القياسي مباشرة
           video.src = url;
-          video.play().catch(() => {
-            // في حال فشل التشغيل التلقائي بسبب سياسة المتصفح
-            setShowUnmuteHint(true);
-          });
+          video.play().catch(() => {});
         }
 
         const plyr = new Plyr(video, {
           controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
           ratio: "16:9",
+          autoplay: true,
+          muted: true
         });
         plyrRef.current = plyr;
         setLoading(false);
@@ -161,6 +159,8 @@ export default function RealPlayer() {
       if (server.type === "m3u8" || url.includes(".m3u8")) {
         const video = document.createElement("video");
         video.playsInline = true;
+        video.muted = true; // كتم الصوت للتشغيل التلقائي
+        video.autoplay = true;
         video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
         container.appendChild(video);
@@ -169,6 +169,8 @@ export default function RealPlayer() {
           controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
           settings: ["quality", "speed"],
           ratio: "16:9",
+          autoplay: true,
+          muted: true
         });
         plyrRef.current = plyr;
 
@@ -177,13 +179,19 @@ export default function RealPlayer() {
           hlsRef.current = hls;
           hls.loadSource(url);
           hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED, () => setLoading(false));
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setLoading(false);
+            video.play().catch(() => {});
+          });
           hls.on(Hls.Events.ERROR, (_, data) => {
             if (data.fatal) { setError("تعذّر تشغيل البث المباشر."); setLoading(false); }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = url;
-          video.addEventListener("loadedmetadata", () => setLoading(false));
+          video.addEventListener("loadedmetadata", () => {
+            setLoading(false);
+            video.play().catch(() => {});
+          });
         } else {
           setError("المتصفح لا يدعم تشغيل هذا النوع من الروابط.");
           setLoading(false);
@@ -200,7 +208,7 @@ export default function RealPlayer() {
       if (kickInfo) {
         const ifr = document.createElement("iframe");
         const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
-        ifr.src = `https://player.kick.com/${embedPath}`;
+        ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -213,7 +221,7 @@ export default function RealPlayer() {
       if (twitchChannel) {
         const ifr = document.createElement("iframe");
         const domain = window.location.hostname;
-        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${domain}&autoplay=true&muted=false`;
+        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${domain}&autoplay=true&muted=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -226,7 +234,7 @@ export default function RealPlayer() {
       if (isFB) {
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0&allowfullscreen=true`;
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=1&allowfullscreen=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -234,7 +242,6 @@ export default function RealPlayer() {
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
         
         container.appendChild(ifr);
-        setShowUnmuteHint(true);
         setTimeout(() => setLoading(false), 1500);
         return;
       }
@@ -244,7 +251,7 @@ export default function RealPlayer() {
         wrapper.className = "youtube-crop-wrapper";
         
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&iv_load_policy=3&controls=1`;
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&mute=1&iv_load_policy=3&controls=1`;
         ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
         ifr.allowFullscreen = true;
         
@@ -286,6 +293,19 @@ export default function RealPlayer() {
     [buildPlayer, servers]
   );
 
+  const handleUnmute = () => {
+    if (plyrRef.current) {
+      plyrRef.current.muted = false;
+      plyrRef.current.volume = 1;
+    }
+    // محاولة تفعيل الصوت للعناصر الأخرى إذا وجدت
+    const video = containerRef.current?.querySelector('video');
+    if (video) {
+      video.muted = false;
+    }
+    setShowUnmuteHint(false);
+  };
+
   const handleSettingsClick = () => {
     const newCount = clickCount + 1;
     if (newCount >= 3) { navigate('/admin'); } 
@@ -312,7 +332,6 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* المشغل مع الإطار المضيء المطور */}
       <div 
         id="main-player-wrapper" 
         className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]"
@@ -340,7 +359,7 @@ export default function RealPlayer() {
 
         <div 
           className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden"
-          onClick={() => setShowUnmuteHint(false)}
+          onClick={handleUnmute}
         >
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
           
@@ -353,8 +372,8 @@ export default function RealPlayer() {
 
           {showUnmuteHint && !loading && (
             <div 
-              className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer"
-              onClick={(e) => { e.stopPropagation(); setShowUnmuteHint(false); }}
+              className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors"
+              onClick={(e) => { e.stopPropagation(); handleUnmute(); }}
             >
               <Volume2 size={20} />
               <span className="font-black text-sm">انقر على الفيديو لتشغيل الصوت</span>
@@ -370,7 +389,6 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      {/* التذييل */}
       <footer className="w-full max-w-[1200px] mt-6 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
         <div className="flex justify-between w-full items-center opacity-40">
           <span dir="ltr" className="font-black tracking-tight">Koora Live - Kora Online</span>
