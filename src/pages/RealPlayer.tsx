@@ -297,7 +297,7 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       } else if (isFB) {
         const ifr = document.createElement("iframe");
-        // تحسين تضمين فيسبوك لملء الشاشة والتكيف مع الحاوية
+        // تحسين تضمين فيسبوك لملء الشاشة والتكيف مع الحاوية بشكل كامل
         ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=${muteParam}&allowfullscreen=true&adapt_to_wrapper=true`;
         ifr.style.width = "100%"; 
         ifr.style.height = "100%"; 
@@ -305,6 +305,7 @@ export default function RealPlayer() {
         ifr.style.position = "absolute";
         ifr.style.top = "0";
         ifr.style.left = "0";
+        ifr.style.objectFit = "contain"; // ضمان عدم قص الفيديو
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"; 
         ifr.allowFullscreen = true;
         container.appendChild(ifr);
