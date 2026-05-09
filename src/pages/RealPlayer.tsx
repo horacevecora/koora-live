@@ -137,19 +137,8 @@ export default function RealPlayer() {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        // لروابط المنفذ 2086، نفضل التشغيل المباشر (Native) لأنه أكثر استقراراً لهذه السيرفرات
-        if (isIPTVPort) {
-          video.src = url;
-          video.play().then(() => {
-            if (video.muted) setShowUnmuteHint(true);
-            setLoading(false);
-          }).catch(() => {
-            setShowUnmuteHint(true);
-            setLoading(false);
-          });
-        } 
-        // لروابط TS الأخرى، نحاول mpegts.js
-        else if (isTS && mpegts.getFeatureList().mseLivePlayback) {
+        // لروابط المنفذ 2086 أو 8080، نستخدم إعدادات mpegts.js المتقدمة جداً
+        if (isTS && mpegts.getFeatureList().mseLivePlayback) {
           try {
             const player = mpegts.createPlayer({ 
               type: 'mpegts', 
@@ -159,7 +148,10 @@ export default function RealPlayer() {
             }, {
               enableWorker: true,
               enableStashBuffer: false,
-              stashInitialSize: 128
+              stashInitialSize: 128,
+              liveBufferLatencyChasing: true, // مطاردة التأخير لضمان مزامنة الفيديو
+              autoCleanupSourceBuffer: true, // تنظيف الذاكرة لضمان عدم توقف الصورة
+              lazyLoad: false
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
@@ -169,6 +161,7 @@ export default function RealPlayer() {
               if (video.muted) setShowUnmuteHint(true);
               setLoading(false);
             }).catch(() => {
+              // Fallback: تشغيل مباشر بدون مكتبة
               video.src = url;
               video.play().catch(() => {});
               setLoading(false);
@@ -189,11 +182,13 @@ export default function RealPlayer() {
           });
         }
 
+        // استخدام Plyr مع تعطيل الميزات التي تسبب أخطاء CORS
         const plyr = new Plyr(video, {
           controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
           ratio: "16:9",
           autoplay: true,
-          muted: true
+          muted: true,
+          blankVideo: "" // تعطيل تحميل blank.mp4 المسبب للخطأ في صورتك
         });
         plyrRef.current = plyr;
         return;
@@ -218,7 +213,8 @@ export default function RealPlayer() {
           settings: ["quality", "speed"],
           ratio: "16:9",
           autoplay: true,
-          muted: true
+          muted: true,
+          blankVideo: ""
         });
         plyrRef.current = plyr;
 
