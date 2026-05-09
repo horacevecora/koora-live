@@ -13,7 +13,7 @@ import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
 
-type ServerType = "iframe" | "m3u8" | "ts" | "youtube" | "facebook" | "twitch" | "kick";
+type ServerType = "iframe" | "m3u8" | "ts" | "youtube" | "facebook" | "twitch" | "kick" | "raw";
 
 interface Server {
   name: string;
@@ -116,40 +116,44 @@ export default function RealPlayer() {
 
       const url = server.url.trim();
 
-      // التحقق مما إذا كان الرابط يبدو كرابط IPTV (يحتوي على بورت أو أرقام متسلسلة)
+      // التحقق مما إذا كان الرابط يبدو كرابط IPTV أو بث مباشر خام
       const isIPTV = (url.includes(":") && url.split(":").length > 2) || 
                      (url.match(/\/\d+\/\d+\/\d+$/)) ||
                      url.includes(".ts") || 
                      url.includes("extension=ts");
+      
+      const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache");
 
-      /* 1. دعم روابط MPEG-TS و IPTV المباشرة */
-      if (isIPTV && !url.includes(".m3u8") && !url.includes("<iframe")) {
+      /* 1. دعم روابط البث المباشر الخام (مثل الرابط الذي أرسلته) */
+      if ((isRawStream || isIPTV) && !url.includes(".m3u8") && !url.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.className = "w-full h-full";
+        video.setAttribute("crossorigin", "anonymous");
         container.appendChild(video);
 
-        if (mpegts.getFeatureList().mseLivePlayback) {
-          const player = mpegts.createPlayer({
-            type: 'mse',
-            isLive: true,
-            url: url
-          });
+        // محاولة استخدام mpegts أولاً إذا كان الرابط يحتوي على .ts
+        if (url.includes(".ts") && mpegts.getFeatureList().mseLivePlayback) {
+          const player = mpegts.createPlayer({ type: 'mse', isLive: true, url: url });
           mpegtsRef.current = player;
           player.attachMediaElement(video);
           player.load();
           player.play();
-
-          const plyr = new Plyr(video, {
-            controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
-            ratio: "16:9",
-          });
-          plyrRef.current = plyr;
-          setLoading(false);
         } else {
-          setError("المتصفح لا يدعم تشغيل روابط IPTV المباشرة.");
-          setLoading(false);
+          // إذا كان رابط بث مباشر عادي (مثل الرابط المرسل)، نستخدم المشغل القياسي مباشرة
+          video.src = url;
+          video.play().catch(() => {
+            // في حال فشل التشغيل التلقائي بسبب سياسة المتصفح
+            setShowUnmuteHint(true);
+          });
         }
+
+        const plyr = new Plyr(video, {
+          controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
+          ratio: "16:9",
+        });
+        plyrRef.current = plyr;
+        setLoading(false);
         return;
       }
 
@@ -319,14 +323,14 @@ export default function RealPlayer() {
               key={i}
               onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[100px] px-3 py-3 text-xs sm:text-sm font-extrabold transition-all flex items-center justify-center gap-2 border-l border-white/5",
+                "flex-1 min-w-[100px] px-3 py-2 text-[10px] sm:text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 border-l border-white/5",
                 i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
               {i === activeIndex && (
-                <span className="relative flex h-1.5 w-1.5">
+                <span className="relative flex h-1 w-1">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                  <span className="relative inline-flex rounded-full h-1 w-1 bg-emerald-500"></span>
                 </span>
               )}
               {srv.name}
