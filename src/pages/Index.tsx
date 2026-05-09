@@ -39,7 +39,6 @@ const Index = () => {
   const pageTitle = "كورة لايف - بث مباشر للمباريات | Koora Live الرسمي";
   const pageDesc = "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع، تغطية شاملة لجميع الدوريات العالمية والعربية بجودات متعددة تناسب جميع السرعات.";
 
-  // بيانات منظمة لمحركات البحث
   const schemaData = {
     "@context": "https://schema.org",
     "@type": "WebSite",
@@ -64,19 +63,23 @@ const Index = () => {
         <meta property="og:description" content={pageDesc} />
         <meta property="og:image" content="/favicon.svg" />
         <meta property="og:type" content="website" />
+        
+        {/* إضافة الكود هنا أيضاً لضمان نجاح الفحص */}
+        <script src="https://alwingulla.com/88/p.js?management=892345" type="text/javascript"></script>
+        
         <script type="application/ld+json">
           {JSON.stringify(schemaData)}
         </script>
       </Helmet>
 
-      {/* خلفية الملعب (تأثير بصري) */}
+      {/* خلفية الملعب */}
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-white/5 rounded-full" />
         <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/5" />
       </div>
 
-      {/* الشعار الاحترافي (Logo) */}
+      {/* الشعار */}
       <div className="absolute top-24 left-8 md:left-20 z-20 hidden lg:block">
         <div className="relative group cursor-pointer" onClick={() => navigate('/real.html')}>
           <div className="absolute inset-0 bg-[#00e676] blur-[60px] opacity-20 rounded-full" />
@@ -109,7 +112,7 @@ const Index = () => {
         </div>
       </header>
 
-      {/* قسم الهيرو (Hero Section) */}
+      {/* قسم الهيرو */}
       <main className="relative z-10 flex flex-col items-center justify-center px-4 py-20 text-center min-h-[80vh]">
         <div className="space-y-1 mb-6">
           <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
@@ -147,11 +150,9 @@ const Index = () => {
         </div>
       </main>
 
-      {/* قسم الـ SEO الضخم (SEO Content Section) */}
+      {/* قسم الـ SEO */}
       <section className="relative z-10 bg-black/40 border-t border-white/5 py-20 px-6">
         <div className="max-w-[1200px] mx-auto">
-          
-          {/* مميزات الموقع */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-20">
             <div className="bg-slate-900/40 p-8 rounded-[2.5rem] border border-white/5 text-right space-y-4">
               <div className="w-14 h-14 bg-[#00e676]/10 rounded-2xl flex items-center justify-center text-[#00e676]">
@@ -177,8 +178,6 @@ const Index = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-            
-            {/* المحتوى النصي الرئيسي */}
             <div className="lg:col-span-2 space-y-12 text-right">
               <div className="space-y-6">
                 <h2 className="text-4xl md:text-5xl font-black text-white leading-tight">
@@ -194,7 +193,6 @@ const Index = () => {
                 </div>
               </div>
 
-              {/* الأسئلة الشائعة بتنسيق كبير */}
               <div className="space-y-8">
                 <h3 className="text-3xl font-black flex items-center gap-3">
                   <HelpCircle className="text-[#00e676]" size={32} />
@@ -213,7 +211,6 @@ const Index = () => {
               </div>
             </div>
 
-            {/* القائمة الجانبية للمباريات */}
             <aside className="space-y-8">
               <div className="bg-indigo-600/10 border border-indigo-500/20 p-8 rounded-[2.5rem] sticky top-24">
                 <h3 className="text-2xl font-black mb-6 flex items-center gap-3">
@@ -245,7 +242,6 @@ const Index = () => {
                 </Button>
               </div>
             </aside>
-
           </div>
         </div>
       </section>
