@@ -13,30 +13,45 @@ const ExternalScripts = () => {
           .eq('key', 'external_scripts')
           .single();
 
-        if (error || !data?.value) return;
+        if (error) {
+          console.error("[ExternalScripts] Error fetching from Supabase:", error);
+          return;
+        }
 
-        const container = document.createElement('div');
-        container.innerHTML = data.value;
+        if (!data?.value) {
+          console.log("[ExternalScripts] No scripts found in Admin panel.");
+          return;
+        }
 
-        const scripts = container.querySelectorAll('script');
-        scripts.forEach((oldScript) => {
-          const newScript = document.createElement('script');
-          Array.from(oldScript.attributes).forEach((attr) => {
-            newScript.setAttribute(attr.name, attr.value);
+        console.log("[ExternalScripts] Injecting scripts from Admin...");
+
+        // استخدام DOMParser لضمان معالجة صحيحة للأكواد
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(data.value, 'text/html');
+        
+        // حقن جميع العناصر الموجودة في الـ head والـ body من الكود المخزن
+        const elements = doc.querySelectorAll('script, meta, link, style');
+        
+        elements.forEach((el) => {
+          const newEl = document.createElement(el.tagName);
+          
+          // نسخ جميع الخصائص (Attributes)
+          Array.from(el.attributes).forEach(attr => {
+            newEl.setAttribute(attr.name, attr.value);
           });
-          if (oldScript.innerHTML) {
-            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+          
+          // نسخ المحتوى الداخلي (مثل أكواد الجافا سكريبت أو الـ CSS)
+          if (el.innerHTML) {
+            newEl.innerHTML = el.innerHTML;
           }
-          document.head.appendChild(newScript);
+          
+          document.head.appendChild(newEl);
         });
 
-        const otherTags = container.querySelectorAll('meta, link, style');
-        otherTags.forEach((tag) => {
-          document.head.appendChild(tag.cloneNode(true));
-        });
+        console.log("[ExternalScripts] Injection complete.");
 
       } catch (error) {
-        console.error("Error injecting external scripts:", error);
+        console.error("[ExternalScripts] Critical error:", error);
       }
     };
 
