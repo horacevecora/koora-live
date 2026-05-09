@@ -297,7 +297,63 @@ const AdminPanel = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Left Column: Channels & SEO */}
+          {/* Right Column: Pages & Bulk (Now on the right in RTL) */}
+          <div className="lg:col-span-4 space-y-8">
+            
+            {/* Pages Section */}
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                  <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                  <Button onClick={addPage} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-10 gap-2">
+                    <Plus size={16} /> إنشاء صفحة
+                  </Button>
+                </div>
+                <div className="space-y-2 pt-4">
+                  {pages.map(p => (
+                    <div key={p.id} className="flex flex-col gap-1">
+                      <Button 
+                        onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} 
+                        variant={activePageId === p.id ? "default" : "outline"}
+                        className={`w-full justify-between h-12 font-bold ${activePageId === p.id ? 'bg-indigo-600' : 'bg-slate-900/50 border-slate-800 text-slate-300'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <button onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} className="p-1 hover:text-white"><ExternalLink size={14} /></button>
+                          {p.slug !== 'default' && <button onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} className="p-1 hover:text-red-400"><Trash2 size={14} /></button>}
+                        </div>
+                        <span>{p.name}</span>
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bulk Add Section */}
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
+                <p className="text-[10px] text-slate-500">أضف قنوات متعددة: الاسم = الرابط (كل قناة في سطر)</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea 
+                  placeholder="سيرفر 1 = https://example.com/live.m3u8&#10;سيرفر 2 = https://example.com/embed" 
+                  value={bulkInput}
+                  onChange={(e) => setBulkInput(e.target.value)}
+                  className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right"
+                />
+                <Button onClick={handleBulkAdd} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-12">
+                  إضافة الكل
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Left Column: Channels & SEO (Now on the left in RTL) */}
           <div className="lg:col-span-8 space-y-8">
             
             {/* Edit Channels */}
@@ -368,61 +424,6 @@ const AdminPanel = () => {
             </Card>
           </div>
 
-          {/* Right Column: Pages & Bulk */}
-          <div className="lg:col-span-4 space-y-8">
-            
-            {/* Pages Section */}
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3">
-                  <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
-                  <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
-                  <Button onClick={addPage} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-10 gap-2">
-                    <Plus size={16} /> إنشاء صفحة
-                  </Button>
-                </div>
-                <div className="space-y-2 pt-4">
-                  {pages.map(p => (
-                    <div key={p.id} className="flex flex-col gap-1">
-                      <Button 
-                        onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} 
-                        variant={activePageId === p.id ? "default" : "outline"}
-                        className={`w-full justify-between h-12 font-bold ${activePageId === p.id ? 'bg-indigo-600' : 'bg-slate-900/50 border-slate-800 text-slate-300'}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} className="p-1 hover:text-white"><ExternalLink size={14} /></button>
-                          {p.slug !== 'default' && <button onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} className="p-1 hover:text-red-400"><Trash2 size={14} /></button>}
-                        </div>
-                        <span>{p.name}</span>
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Bulk Add Section */}
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
-                <p className="text-[10px] text-slate-500">أضف قنوات متعددة: الاسم = الرابط (كل قناة في سطر)</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea 
-                  placeholder="سيرفر 1 = https://example.com/live.m3u8&#10;سيرفر 2 = https://example.com/embed" 
-                  value={bulkInput}
-                  onChange={(e) => setBulkInput(e.target.value)}
-                  className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right"
-                />
-                <Button onClick={handleBulkAdd} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-12">
-                  إضافة الكل
-                </Button>
-              </CardContent>
-            </Card>
-          </div>
         </div>
 
         {/* Footer Button */}
