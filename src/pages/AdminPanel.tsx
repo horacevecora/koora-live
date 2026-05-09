@@ -236,9 +236,9 @@ const AdminPanel = () => {
 
   const handleBulkAdd = async () => {
     if (!bulkInput || !activePageId) return;
-    const lines = bulkInput.split('\n');
-    const newServers = lines.map(line => {
-      const parts = line.split('='); // التغيير هنا ليكون التقسيم بعلامة =
+    const lines = bulkInput.split('\n').filter(line => line.trim() !== '');
+    const newServers = lines.map((line, index) => {
+      const parts = line.split('=');
       if (parts.length >= 2) {
         const name = parts[0].trim();
         const url = parts.slice(1).join('=').trim();
@@ -247,7 +247,7 @@ const AdminPanel = () => {
           url,
           type: url.includes('.m3u8') ? 'm3u8' : 'iframe',
           page_id: activePageId,
-          sort_order: servers.length
+          sort_order: servers.length + index
         };
       }
       return null;
