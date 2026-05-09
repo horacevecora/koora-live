@@ -478,7 +478,14 @@ const AdminPanel = () => {
                       <div key={s.id} className="flex items-center justify-between p-3 bg-slate-900/80 border border-slate-800 rounded-xl text-sm">
                         <div className="truncate ml-4">
                           <div className="font-bold">{s.name}</div>
-                          <div className="text-[10px] text-slate-500 truncate">{s.url}</div>
+                          <a 
+                            href={getCleanLink(s.url)} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-[10px] text-slate-500 truncate hover:text-indigo-400 hover:underline block"
+                          >
+                            {s.url}
+                          </a>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
                           <button onClick={() => copyToClipboard(s.url)} className="p-1.5 text-slate-500 hover:text-emerald-400" title="نسخ الرابط النظيف"><Copy size={16} /></button>
