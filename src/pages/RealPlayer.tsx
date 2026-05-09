@@ -36,6 +36,7 @@ export default function RealPlayer() {
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
+  const [hasInteracted, setHasInteracted] = useState(false);
 
   /* ---- تحميل السيرفرات من localStorage ---- */
   useEffect(() => {
@@ -44,7 +45,7 @@ export default function RealPlayer() {
       const parsed = JSON.parse(saved);
       setServers(parsed);
       if (parsed.length > 0) {
-        buildPlayer(parsed[0]);
+        buildPlayer(parsed[0], false, false); // المحاولة الأولى قد تكون صامتة بسبب سياسة المتصفح
       }
     } else {
       const defaultServers: Server[] = [
@@ -55,7 +56,7 @@ export default function RealPlayer() {
         }
       ];
       setServers(defaultServers);
-      buildPlayer(defaultServers[0]);
+      buildPlayer(defaultServers[0], false, false);
     }
 
     return () => {
@@ -106,7 +107,7 @@ export default function RealPlayer() {
 
   /* ---- بناء المشغّل حسب نوع السيرفر ---- */
   const buildPlayer = useCallback(
-    (server: Server, forceNative = false) => {
+    (server: Server, forceNative = false, shouldUnmute = hasInteracted) => {
       const container = containerRef.current;
       if (!container) return;
 
@@ -128,51 +129,42 @@ export default function RealPlayer() {
       if (isRawStream && !isM3U8 && !url.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
-        video.muted = true;
         video.autoplay = true;
         video.controls = true;
+        video.muted = !shouldUnmute; // محاولة التشغيل بالصوت إذا كان هناك تفاعل سابق
         video.className = "w-full h-full bg-black object-contain live-video-element";
         video.setAttribute("crossorigin", "anonymous");
         video.setAttribute("referrerpolicy", "no-referrer");
         container.appendChild(video);
 
-        // مراقبة حالة التوقف (Stall) لاستئناف البث
-        video.onwaiting = () => {
-          if (video.readyState < 3) setLoading(true);
-        };
-        video.onplaying = () => setLoading(false);
-        
-        video.onvolumechange = () => {
-          if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
+        const attemptPlay = () => {
+          video.play().then(() => {
+            setLoading(false);
+            if (video.muted) setShowUnmuteHint(true);
+          }).catch(() => {
+            // إذا فشل التشغيل بالصوت، نجرب صامتاً
+            video.muted = true;
+            video.play().then(() => {
+              setLoading(false);
+              setShowUnmuteHint(true);
+            });
+          });
         };
 
         if (forceNative || !mpegts.getFeatureList().mseLivePlayback) {
           video.src = url;
-          video.play().then(() => {
-            if (video.muted) setShowUnmuteHint(true);
-            setLoading(false);
-          }).catch(() => {
-            setShowUnmuteHint(true);
-            setLoading(false);
-          });
+          attemptPlay();
           return;
         }
 
         if (isTS) {
           try {
             const player = mpegts.createPlayer({ 
-              type: 'mpegts', 
-              isLive: true, 
-              url: url,
-              cors: true
+              type: 'mpegts', isLive: true, url: url, cors: true
             }, {
-              enableWorker: true,
-              enableStashBuffer: true,
-              stashInitialSize: 3072, // زيادة حجم التخزين المؤقت لتقليل التقطيع
-              liveBufferLatencyChasing: true,
-              liveBufferLatencyMaxLatency: 3,
-              autoCleanupSourceBuffer: true,
-              lazyLoad: false
+              enableWorker: true, enableStashBuffer: true, stashInitialSize: 3072,
+              liveBufferLatencyChasing: true, liveBufferLatencyMaxLatency: 3,
+              autoCleanupSourceBuffer: true, lazyLoad: false
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
@@ -181,33 +173,18 @@ export default function RealPlayer() {
             player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
               if (detail === mpegts.ErrorDetails.MEDIA_MSE_ERROR || type.includes('unsupported')) {
                 setIsCodecUnsupported(true);
-                buildPlayer(server, true);
+                buildPlayer(server, true, shouldUnmute);
                 return;
-              }
-              if (retryCount < 2) {
-                setRetryCount(prev => prev + 1);
-                setTimeout(() => buildPlayer(server), 3000);
               }
             });
 
-            Promise.resolve(player.play()).then(() => {
-              if (video.muted) setShowUnmuteHint(true);
-              setLoading(false);
-            }).catch((e) => {
-              if (e.name !== 'AbortError') buildPlayer(server, true);
-            });
+            attemptPlay();
           } catch (e) {
-            buildPlayer(server, true);
+            buildPlayer(server, true, shouldUnmute);
           }
         } else {
           video.src = url;
-          video.play().then(() => {
-            if (video.muted) setShowUnmuteHint(true);
-            setLoading(false);
-          }).catch(() => {
-            setShowUnmuteHint(true);
-            setLoading(false);
-          });
+          attemptPlay();
         }
         return;
       }
@@ -216,52 +193,44 @@ export default function RealPlayer() {
       if (isM3U8) {
         const video = document.createElement("video");
         video.playsInline = true;
-        video.muted = true;
         video.autoplay = true;
+        video.muted = !shouldUnmute;
         video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
         container.appendChild(video);
 
-        video.onvolumechange = () => {
-          if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
-        };
-
         const plyr = new Plyr(video, {
-          controls: ["play-large", "play", "mute", "volume", "settings", "pip", "fullscreen"], // إزالة شريط التقدم
-          settings: ["quality", "speed"],
-          ratio: "16:9",
+          controls: ["play-large", "play", "mute", "volume", "settings", "pip", "fullscreen"],
           autoplay: true,
-          muted: true,
-          blankVideo: ""
+          muted: !shouldUnmute,
         });
         plyrRef.current = plyr;
 
-        if (Hls.isSupported()) {
-          const hls = new Hls({ 
-            xhrSetup: (xhr) => { xhr.withCredentials = false; },
-            manifestLoadingMaxRetry: 4,
-            levelLoadingMaxRetry: 4,
-            liveSyncDurationCount: 3,
-            liveMaxLatencyDurationCount: 10
-          });
-          hlsRef.current = hls;
-          hls.loadSource(url);
-          hls.attachMedia(video);
-          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        const startHls = () => {
+          if (Hls.isSupported()) {
+            const hls = new Hls({ xhrSetup: (xhr) => { xhr.withCredentials = false; } });
+            hlsRef.current = hls;
+            hls.loadSource(url);
+            hls.attachMedia(video);
+            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+              setLoading(false);
+              video.play().catch(() => {
+                video.muted = true;
+                video.play();
+                setShowUnmuteHint(true);
+              });
+            });
+          } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+            video.src = url;
+            video.play().catch(() => {
+              video.muted = true;
+              video.play();
+              setShowUnmuteHint(true);
+            });
             setLoading(false);
-            video.play().then(() => {
-              if (video.muted) setShowUnmuteHint(true);
-            }).catch(() => setShowUnmuteHint(true));
-          });
-        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = url;
-          video.addEventListener("loadedmetadata", () => {
-            setLoading(false);
-            video.play().then(() => {
-              if (video.muted) setShowUnmuteHint(true);
-            }).catch(() => setShowUnmuteHint(true));
-          });
-        }
+          }
+        };
+        startHls();
         return;
       }
 
@@ -272,22 +241,25 @@ export default function RealPlayer() {
       const isFB = isFacebookUrl(url);
 
       if (kickInfo || twitchChannel || isFB || ytId || url.includes("<iframe")) {
+        const muteParam = shouldUnmute ? "0" : "1";
+        const autoParam = "1";
+
         if (kickInfo) {
           const ifr = document.createElement("iframe");
           const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
-          ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=false`;
+          ifr.src = `https://player.kick.com/${embedPath}?autoplay=${autoParam}&muted=${shouldUnmute ? 'false' : 'true'}`;
           ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
           ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
           container.appendChild(ifr);
         } else if (twitchChannel) {
           const ifr = document.createElement("iframe");
-          ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${window.location.hostname}&autoplay=true&muted=false`;
+          ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${window.location.hostname}&autoplay=true&muted=${!shouldUnmute}`;
           ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
           ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
           container.appendChild(ifr);
         } else if (isFB) {
           const ifr = document.createElement("iframe");
-          ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=0&allowfullscreen=true`;
+          ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=${muteParam}&allowfullscreen=true`;
           ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
           ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
           container.appendChild(ifr);
@@ -295,7 +267,7 @@ export default function RealPlayer() {
           const wrapper = document.createElement("div");
           wrapper.className = "youtube-crop-wrapper";
           const ifr = document.createElement("iframe");
-          ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=0&controls=1`;
+          ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=${muteParam}&controls=1`;
           ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
           wrapper.appendChild(ifr);
           container.appendChild(wrapper);
@@ -314,22 +286,24 @@ export default function RealPlayer() {
         return;
       }
     },
-    [destroy, retryCount]
+    [destroy, hasInteracted]
   );
 
   /* ---- التبديل بين السيرفرات ---- */
   const switchServer = useCallback(
     (index: number) => {
       if (servers[index]) {
+        setHasInteracted(true); // بمجرد النقر على أي سيرفر، نعتبر أن المستخدم تفاعل
         setRetryCount(0);
         setActiveIndex(index);
-        buildPlayer(servers[index]);
+        buildPlayer(servers[index], false, true); // نطلب فك الكتم لأن المستخدم نقر للتو
       }
     },
     [buildPlayer, servers]
   );
 
   const handleUnmute = () => {
+    setHasInteracted(true);
     const video = containerRef.current?.querySelector('video');
     if (video) {
       video.muted = false;
@@ -444,7 +418,6 @@ export default function RealPlayer() {
       <style>{`
         :root { --plyr-color-main: #6366f1; }
         .plyr { width: 100%; height: 100%; }
-        /* إخفاء شريط التقدم والوقت في البث المباشر */
         .live-video-element::-webkit-media-controls-timeline,
         .live-video-element::-webkit-media-controls-current-time-display,
         .live-video-element::-webkit-media-controls-time-remaining-display {
