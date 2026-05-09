@@ -10,7 +10,6 @@ import PlayerPage from "./pages/PlayerPage";
 import RealPlayer from "./pages/RealPlayer";
 import AdminPanel from "./pages/AdminPanel";
 import Matches from "./pages/Matches";
-import VerificationFile from "./pages/VerificationFile";
 import ExternalScripts from "./components/ExternalScripts";
 
 const queryClient = new QueryClient();
@@ -30,8 +29,6 @@ const App = () => (
             <Route path="/real.html" element={<RealPlayer />} />
             <Route path="/p/:slug" element={<RealPlayer />} />
             <Route path="/admin" element={<AdminPanel />} />
-            {/* مسار ملفات التحقق (مثل monetag.html) */}
-            <Route path="/:filename" element={<VerificationFile />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
