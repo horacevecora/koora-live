@@ -364,29 +364,25 @@ export default function RealPlayer() {
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       
-      {/* جهة اليسار: زر التكبير في مكانه الطبيعي (left-6) ثم الزر الخفي مزاح لليمين بمسافة كبيرة */}
-      <div className="absolute top-4 left-6 flex items-center z-50 pointer-events-none">
-        <div className="flex items-center pointer-events-auto">
-          {/* زر التكبير */}
-          <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="ملء الشاشة">
-            <Maximize size={28} />
-          </button>
-          {/* الزر الخفي مزاح لليمين بمسافة كبيرة (ml-64) لإبعاده تماماً عن زر التكبير */}
-          <div className="ml-64">
-            <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
-              <Settings size={8} />
-            </button>
-          </div>
-        </div>
+      {/* زر التكبير في مكانه الأصلي (left-6) */}
+      <div className="absolute top-4 left-6 z-50">
+        <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="ملء الشاشة">
+          <Maximize size={28} />
+        </button>
+      </div>
+
+      {/* الزر الخفي في موضع مستقل بعيداً لليمين (left-80) لضمان عدم تداخله */}
+      <div className="absolute top-4 left-80 z-50">
+        <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
+          <Settings size={8} />
+        </button>
       </div>
 
       {/* جهة اليمين: زر الرئيسية */}
-      <div className="absolute top-4 right-6 md:right-24 flex items-center z-50 pointer-events-none">
-        <div className="flex items-center pointer-events-auto">
-          <button onClick={() => navigate('/')} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="الرئيسية">
-            <Home size={24} />
-          </button>
-        </div>
+      <div className="absolute top-4 right-6 md:right-24 z-50">
+        <button onClick={() => navigate('/')} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="الرئيسية">
+          <Home size={24} />
+        </button>
       </div>
 
       <div id="main-player-wrapper" className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]">
