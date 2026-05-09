@@ -545,13 +545,15 @@ export default function RealPlayer() {
         </div>
       )}
 
-      {/* قسم الكلمات المفتاحية (Tags) */}
-      <div className="mt-8 flex flex-wrap justify-center gap-2 max-w-3xl" dir="rtl">
-        {tags.map((tag, index) => (
-          <span key={index} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-slate-500 hover:text-[#00e676] hover:border-[#00e676]/30 transition-colors cursor-default">
-            #{tag}
-          </span>
-        ))}
+      {/* قسم الكلمات المفتاحية (Tags) - صف واحد مع تمرير أفقي */}
+      <div className="mt-8 w-full max-w-[1200px] overflow-x-auto no-scrollbar" dir="rtl">
+        <div className="flex flex-nowrap justify-center gap-2 min-w-max px-4">
+          {tags.map((tag, index) => (
+            <span key={index} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-slate-500 hover:text-[#00e676] hover:border-[#00e676]/30 transition-colors cursor-default whitespace-nowrap">
+              #{tag}
+            </span>
+          ))}
+        </div>
       </div>
 
       <footer className="w-full max-w-[1200px] mt-12 px-4 text-center" dir="rtl">
@@ -570,6 +572,8 @@ export default function RealPlayer() {
         #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
         .youtube-crop-wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
         .youtube-crop-wrapper iframe { position: absolute; width: 120%; height: 120%; top: -10%; left: -10%; border: none; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
       `}</style>
     </div>
   );
