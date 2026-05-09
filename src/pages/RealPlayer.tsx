@@ -384,6 +384,29 @@ export default function RealPlayer() {
   const pageDesc = pageInfo ? `شاهد ${pageInfo.name} بث مباشر بدون تقطيع بجودة عالية على كورة لايف الرسمي.` : "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع.";
   const canonicalUrl = `https://${window.location.hostname}${location.pathname}`;
 
+  // بيانات منظمة للفيديو والبث المباشر
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    "name": pageTitle,
+    "description": pageDesc,
+    "thumbnailUrl": [
+      `https://${window.location.hostname}/favicon.svg`
+    ],
+    "uploadDate": new Date().toISOString(),
+    "embedUrl": servers[activeIndex] ? getCleanLink(servers[activeIndex].url) : "",
+    "interactionStatistic": {
+      "@type": "InteractionCounter",
+      "interactionType": { "@type": "WatchAction" },
+      "userInteractionCount": 12500
+    },
+    "publication": {
+      "@type": "BroadcastEvent",
+      "isLiveBroadcast": true,
+      "startDate": new Date().toISOString()
+    }
+  };
+
   const seoKeywords = [
     "كورة لايف", "بث مباشر", "مباريات اليوم", "يلا شوت", "كورة اون لاين", 
     "بين سبورت", "الاسطورة", "كورة ستار", "يلا كورة", "ماي كورة", 
@@ -405,6 +428,9 @@ export default function RealPlayer() {
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
         <link rel="canonical" href={canonicalUrl} />
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
       </Helmet>
 
       <div className="absolute top-4 left-24 z-50">

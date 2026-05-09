@@ -39,6 +39,20 @@ const Index = () => {
   const pageTitle = "كورة لايف - بث مباشر للمباريات | Koora Live الرسمي";
   const pageDesc = "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع، تغطية شاملة لجميع الدوريات العالمية والعربية بجودات متعددة تناسب جميع السرعات.";
 
+  // بيانات منظمة لمحركات البحث
+  const schemaData = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Koora Live",
+    "url": `https://${window.location.hostname}/`,
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": `https://${window.location.hostname}/search?q={search_term_string}`,
+      "query-input": "required name=search_term_string"
+    },
+    "description": pageDesc
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white font-sans relative overflow-x-hidden flex flex-col" dir="rtl">
       <Helmet>
@@ -50,6 +64,9 @@ const Index = () => {
         <meta property="og:description" content={pageDesc} />
         <meta property="og:image" content="/favicon.svg" />
         <meta property="og:type" content="website" />
+        <script type="application/ld+json">
+          {JSON.stringify(schemaData)}
+        </script>
       </Helmet>
 
       {/* خلفية الملعب (تأثير بصري) */}
