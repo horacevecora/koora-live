@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert, Info } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -127,8 +127,8 @@ export default function RealPlayer() {
       }
 
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      // تحسين التعرف على روابط Xtream Codes التي تنتهي بأرقام
-      const isXtream = /:\d+\/.*?\/\d+$/.test(url);
+      // تحسين التعرف على روابط Xtream Codes (نطاق/يوزر/باس/ايدي)
+      const isXtream = /\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/\d+$/.test(url) || /:\d+\/.*?\/\d+$/.test(url);
       const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes(".ts") || isXtream || server.type === "ts");
 
       if (isM3U8) {
@@ -201,7 +201,7 @@ export default function RealPlayer() {
         video.onplaying = () => setLoading(false);
         video.onerror = () => {
           if (isHttps && isUrlHttp) {
-            setError("المتصفح يمنع تشغيل روابط HTTP على موقع آمن. يرجى استخدام رابط HTTPS أو السماح بالمحتوى غير الآمن من إعدادات المتصفح.");
+            setError("المتصفح يمنع تشغيل روابط HTTP على موقع آمن. يرجى اتباع التعليمات في التنبيه الأصفر بالأعلى.");
           } else {
             setError("خطأ في تشغيل الرابط المباشر.");
           }
@@ -229,7 +229,6 @@ export default function RealPlayer() {
           return;
         }
 
-        // استخدام mpegts للروابط التي قد تكون TS
         try {
           const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: url, cors: true });
           mpegtsRef.current = player;
@@ -464,9 +463,22 @@ export default function RealPlayer() {
           )}
 
           {isMixedContent && !loading && !error && (
-            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-amber-500/90 text-black px-4 py-2 rounded-lg flex items-center gap-2 text-[10px] font-bold shadow-xl">
-              <ShieldAlert size={14} />
-              تنبيه: الرابط غير آمن (HTTP). إذا لم يعمل، يرجى السماح بالمحتوى غير الآمن في المتصفح.
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-amber-500/95 text-black p-4 rounded-2xl flex flex-col gap-2 text-[10px] font-bold shadow-2xl border border-amber-400/50 max-w-[90%] md:max-w-md">
+              <div className="flex items-center gap-2 text-amber-900">
+                <ShieldAlert size={18} />
+                <span>تنبيه أمني من المتصفح (Mixed Content)</span>
+              </div>
+              <p className="text-amber-950 leading-relaxed">
+                هذا الرابط يبدأ بـ <code className="bg-amber-900/10 px-1 rounded">http</code> والمتصفح يمنعه تلقائياً. لتشغيله:
+                <br />
+                1. اضغط على أيقونة القفل 🔒 بجانب رابط الموقع في الأعلى.
+                <br />
+                2. اختر <span className="underline">إعدادات الموقع</span> (Site Settings).
+                <br />
+                3. ابحث عن <span className="underline">المحتوى غير الآمن</span> (Insecure content) واجعله <span className="font-black">سماح</span> (Allow).
+                <br />
+                4. أعد تحميل الصفحة وسيعمل البث فوراً.
+              </p>
             </div>
           )}
 
