@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
@@ -35,6 +35,7 @@ export default function RealPlayer() {
   const [clickCount, setClickCount] = useState(0);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
 
   /* ---- تحميل السيرفرات من localStorage ---- */
   useEffect(() => {
@@ -114,6 +115,7 @@ export default function RealPlayer() {
       setLoading(true);
       setError(null);
       setShowUnmuteHint(false);
+      setIsCodecUnsupported(false);
       
       const url = server.url.trim();
       
@@ -147,8 +149,8 @@ export default function RealPlayer() {
               cors: true
             }, {
               enableWorker: true,
-              enableStashBuffer: true, // تفعيل التخزين المؤقت لزيادة الاستقرار
-              stashInitialSize: 1024, // زيادة الحجم المبدئي لتقليل التقطيع
+              enableStashBuffer: true,
+              stashInitialSize: 1024,
               liveBufferLatencyChasing: true,
               autoCleanupSourceBuffer: true,
               lazyLoad: false
@@ -159,9 +161,18 @@ export default function RealPlayer() {
             
             player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
               console.warn("MPEGTS Error:", type, detail);
-              if (retryCount < 3) {
+              
+              // التحقق من خطأ الكوديك (H.265/HEVC)
+              if (detail === mpegts.ErrorDetails.MEDIA_MSE_ERROR || type.includes('unsupported')) {
+                setIsCodecUnsupported(true);
+                setError("المتصفح لا يدعم كوديك الفيديو (H.265). جرب متصفحاً آخر أو سيرفر مختلف.");
+                setLoading(false);
+                return;
+              }
+
+              if (retryCount < 2) {
                 setRetryCount(prev => prev + 1);
-                setTimeout(() => buildPlayer(server), 2000);
+                setTimeout(() => buildPlayer(server), 3000);
               } else {
                 video.src = url;
                 video.play().catch(() => {});
@@ -172,9 +183,8 @@ export default function RealPlayer() {
               if (video.muted) setShowUnmuteHint(true);
               setLoading(false);
               setRetryCount(0);
-            }).catch(() => {
-              video.src = url;
-              video.play().catch(() => {});
+            }).catch((e) => {
+              console.error("Play failed:", e);
               setLoading(false);
             });
           } catch (e) {
@@ -236,9 +246,9 @@ export default function RealPlayer() {
           });
           hls.on(Hls.Events.ERROR, (_, data) => {
             if (data.fatal) { 
-              if (retryCount < 3) {
+              if (retryCount < 2) {
                 setRetryCount(prev => prev + 1);
-                setTimeout(() => buildPlayer(server), 2000);
+                setTimeout(() => buildPlayer(server), 3000);
               } else {
                 setError("تعذّر تشغيل البث المباشر."); 
                 setLoading(false); 
@@ -446,10 +456,18 @@ export default function RealPlayer() {
 
           {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
-              <p className="text-red-400 font-black mb-4">{error}</p>
-              <button onClick={() => switchServer(activeIndex)} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 mx-auto">
-                <RefreshCw size={18} /> إعادة المحاولة
-              </button>
+              <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 mb-4">
+                <AlertTriangle className="text-red-500 mx-auto mb-2" size={32} />
+                <p className="text-red-400 font-black text-sm">{error}</p>
+              </div>
+              {!isCodecUnsupported && (
+                <button onClick={() => switchServer(activeIndex)} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 mx-auto">
+                  <RefreshCw size={18} /> إعادة المحاولة
+                </button>
+              )}
+              {isCodecUnsupported && (
+                <p className="text-slate-500 text-xs">يرجى تجربة سيرفر آخر يدعم كوديك H.264</p>
+              )}
             </div>
           )}
         </div>
