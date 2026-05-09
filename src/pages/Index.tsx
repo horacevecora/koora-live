@@ -38,6 +38,18 @@ const Index = () => {
         <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/5" />
       </div>
 
+      {/* الأيقونة الجذابة في المكان المحدد (أعلى اليسار) */}
+      <div className="absolute top-28 left-8 md:left-20 z-20 hidden lg:block animate-float">
+        <div className="relative">
+          <div className="absolute inset-0 bg-[#00e676] blur-[40px] opacity-20 rounded-full animate-pulse" />
+          <img 
+            src="/favicon.svg" 
+            alt="Koora Live Icon" 
+            className="w-32 h-32 md:w-40 md:h-40 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] relative z-10"
+          />
+        </div>
+      </div>
+
       {/* الشريط العلوي */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-3">
@@ -120,6 +132,17 @@ const Index = () => {
           © 2026 Koora Live - جميع الحقوق محفوظة لموقع كورة لايف الرسمي
         </p>
       </footer>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes float {
+          0% { transform: translateY(0px) rotate(0deg); }
+          50% { transform: translateY(-20px) rotate(5deg); }
+          100% { transform: translateY(0px) rotate(0deg); }
+        }
+        .animate-float {
+          animation: float 6s ease-in-out infinite;
+        }
+      `}} />
     </div>
   );
 };
