@@ -92,10 +92,8 @@ export default function RealPlayer() {
     monitorInterval.current = setInterval(() => {
       if (!video.paused && video.readyState >= 2) {
         if (video.currentTime === lastTime.current) {
-          // الفيديو متوقف (تجمد) رغم أنه في حالة تشغيل
           if (video.buffered.length > 0) {
             const end = video.buffered.end(video.buffered.length - 1);
-            // دفع الفيديو لنهاية التخزين لاستئناف الحركة
             video.currentTime = end - 0.2;
           }
         }
@@ -144,13 +142,26 @@ export default function RealPlayer() {
       
       const url = server.url.trim();
       
+      // تحسين منطق التعرف: إذا كان النوع المختار هو iframe، نستخدمه مباشرة
+      if (server.type === "iframe" && !url.includes(".m3u8") && !url.includes(".ts")) {
+        const ifr = document.createElement("iframe");
+        ifr.src = url; ifr.setAttribute("referrerpolicy", "no-referrer");
+        ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
+        container.appendChild(ifr);
+        setTimeout(() => setLoading(false), 1500);
+        return;
+      }
+
       const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
-      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || / \/\d+$/.test(url);
+      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || /\/\d+$/.test(url);
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS;
+      
+      // روابط البث الخام (فقط إذا كانت تحتوي على دلالات واضحة للبث المباشر)
+      const isRawStream = (url.includes("type=http") || url.includes("nocache") || isTS) && !url.includes("<iframe");
 
       /* 1. دعم روابط البث المباشر الخام و IPTV (TS) */
-      if (isRawStream && !isM3U8 && !url.includes("<iframe")) {
+      if (isRawStream && !isM3U8) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.autoplay = true;
@@ -192,12 +203,11 @@ export default function RealPlayer() {
             }, {
               enableWorker: true, 
               enableStashBuffer: true, 
-              stashInitialSize: 1024 * 1024 * 2, // 2MB buffer لضمان استقرار فائق
+              stashInitialSize: 1024 * 1024 * 2,
               liveBufferLatencyChasing: true, 
-              liveBufferLatencyMaxLatency: 15, // السماح بتأخير أكبر لتفادي التقطيع
+              liveBufferLatencyMaxLatency: 15,
               autoCleanupSourceBuffer: true, 
-              lazyLoad: false,
-              statisticsInfoReportInterval: 1000
+              lazyLoad: false
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
@@ -243,7 +253,7 @@ export default function RealPlayer() {
           if (Hls.isSupported()) {
             const hls = new Hls({ 
               xhrSetup: (xhr) => { xhr.withCredentials = false; },
-              liveSyncDurationCount: 8, // زيادة عدد القطع المخزنة لضمان الاستقرار
+              liveSyncDurationCount: 8,
               liveMaxLatencyDurationCount: 20,
               maxBufferLength: 60,
               enableWorker: true
