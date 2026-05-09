@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,6 +23,13 @@ interface Page {
   id: string;
   name: string;
   slug: string;
+}
+
+interface SiteFile {
+  id: string;
+  filename: string;
+  content: string;
+  content_type: string;
 }
 
 const AdminPanel = () => {
@@ -46,6 +53,11 @@ const AdminPanel = () => {
 
   const [externalScripts, setExternalScripts] = useState("");
   const [bulkInput, setBulkInput] = useState("");
+
+  // ملفات الموقع (Service Workers)
+  const [siteFiles, setSiteFiles] = useState<SiteFile[]>([]);
+  const [newFileName, setNewFileName] = useState("sw.js");
+  const [newFileContent, setNewFileContent] = useState("");
 
   useEffect(() => {
     const savedAuth = localStorage.getItem('admin_unlocked');
@@ -113,6 +125,10 @@ const AdminPanel = () => {
         .single();
       
       if (settingsData) setExternalScripts(settingsData.value);
+
+      // جلب الملفات
+      const { data: filesData } = await supabase.from('site_files').select('*');
+      if (filesData) setSiteFiles(filesData);
 
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -361,6 +377,33 @@ const AdminPanel = () => {
     else showSuccess("تم حفظ الأكواد");
   };
 
+  const handleSaveFile = async () => {
+    if (!newFileName || !newFileContent) return;
+    const { error } = await supabase
+      .from('site_files')
+      .upsert({ 
+        filename: newFileName, 
+        content: newFileContent,
+        content_type: newFileName.endsWith('.js') ? 'application/javascript' : 'text/plain'
+      }, { onConflict: 'filename' });
+
+    if (error) showError("فشل حفظ الملف");
+    else {
+      showSuccess("تم حفظ الملف بنجاح");
+      fetchInitialData();
+      setNewFileContent("");
+    }
+  };
+
+  const deleteFile = async (id: string) => {
+    const { error } = await supabase.from('site_files').delete().eq('id', id);
+    if (error) showError("فشل حذف الملف");
+    else {
+      showSuccess("تم حذف الملف");
+      fetchInitialData();
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('admin_unlocked');
     setIsUnlocked(false);
@@ -543,6 +586,51 @@ const AdminPanel = () => {
                         <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
                         <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                         <button onClick={() => copyToClipboard(s.url)} className="p-2 text-slate-500 hover:text-emerald-400"><Copy size={16} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Virtual Files Section (Service Workers) */}
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
+                  <FileCode size={20} /> إدارة ملفات الـ Service Worker
+                </CardTitle>
+                <p className="text-center text-xs text-slate-400">ارفع ملفات مثل sw.js الخاصة بـ Monetag لتظهر في المسار الرئيسي للموقع</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="اسم الملف (مثلاً sw.js)" 
+                    value={newFileName} 
+                    onChange={e => setNewFileName(e.target.value)} 
+                    className="bg-slate-900/80 border-slate-700 h-10 text-right" 
+                  />
+                </div>
+                <Textarea 
+                  placeholder="ألصق محتوى الملف هنا..." 
+                  value={newFileContent}
+                  onChange={(e) => setNewFileContent(e.target.value)}
+                  className="bg-slate-900/80 border-slate-700 min-h-[150px] font-mono text-xs text-right"
+                  dir="ltr"
+                />
+                <Button onClick={handleSaveFile} className="w-full bg-indigo-600 hover:bg-indigo-700 font-black h-12">
+                  حفظ الملف في السحابة
+                </Button>
+
+                <div className="space-y-2 pt-4">
+                  {siteFiles.map(file => (
+                    <div key={file.id} className="flex items-center justify-between p-3 bg-slate-900/40 border border-slate-800 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => deleteFile(file.id)} className="text-red-500 hover:text-red-400 p-1"><Trash2 size={16} /></button>
+                        <button onClick={() => { setNewFileName(file.filename); setNewFileContent(file.content); }} className="text-indigo-400 hover:text-indigo-300 p-1"><Edit2 size={16} /></button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-slate-400">/{file.filename}</span>
+                        <FileCode size={16} className="text-indigo-500" />
                       </div>
                     </div>
                   ))}
