@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -75,7 +75,6 @@ const AdminPanel = () => {
         showError("الكود السري غير صحيح");
       }
     } catch (err) {
-      // Fallback if setting doesn't exist yet
       if (accessCode === "simo") {
         setIsUnlocked(true);
         localStorage.setItem('admin_unlocked', 'true');
@@ -220,6 +219,97 @@ const AdminPanel = () => {
     }
   };
 
+  const moveChannel = async (index: number, direction: 'up' | 'down') => {
+    if (!activePageId) return;
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= servers.length) return;
+
+    const updatedServers = [...servers];
+    const temp = updatedServers[index].sort_order;
+    updatedServers[index].sort_order = updatedServers[newIndex].sort_order;
+    updatedServers[newIndex].sort_order = temp;
+
+    // Update in DB
+    const { error: err1 } = await supabase.from('servers').update({ sort_order: updatedServers[index].sort_order }).eq('id', updatedServers[index].id);
+    const { error: err2 } = await supabase.from('servers').update({ sort_order: updatedServers[newIndex].sort_order }).eq('id', updatedServers[newIndex].id);
+
+    if (err1 || err2) showError("فشل تغيير الترتيب");
+    else fetchServers(activePageId);
+  };
+
+  const exportBackup = async () => {
+    try {
+      const { data: pagesData } = await supabase.from('pages').select('*');
+      const { data: serversData } = await supabase.from('servers').select('*');
+      
+      const backup = {
+        pages: pagesData,
+        servers: serversData,
+        timestamp: new Date().toISOString()
+      };
+
+      const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `koora-live-backup-${new Date().toLocaleDateString()}.json`;
+      a.click();
+      showSuccess("تم تصدير النسخة الاحتياطية");
+    } catch (err) {
+      showError("فشل التصدير");
+    }
+  };
+
+  const importBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const backup = JSON.parse(event.target?.result as string);
+        if (!backup.pages || !backup.servers) throw new Error("ملف غير صالح");
+
+        setIsLoading(true);
+        
+        // Import Pages
+        for (const page of backup.pages) {
+          await supabase.from('pages').upsert({ 
+            name: page.name, 
+            slug: page.slug 
+          }, { onConflict: 'slug' });
+        }
+
+        // Re-fetch pages to get correct IDs
+        const { data: currentPages } = await supabase.from('pages').select('*');
+        
+        // Import Servers
+        for (const server of backup.servers) {
+          const originalPage = backup.pages.find((p: any) => p.id === server.page_id);
+          const currentPage = currentPages?.find(p => p.slug === originalPage?.slug);
+          
+          if (currentPage) {
+            await supabase.from('servers').insert([{
+              name: server.name,
+              url: server.url,
+              type: server.type,
+              sort_order: server.sort_order,
+              page_id: currentPage.id
+            }]);
+          }
+        }
+
+        showSuccess("تم استيراد البيانات بنجاح");
+        fetchInitialData();
+      } catch (err) {
+        showError("فشل الاستيراد: تأكد من صحة الملف");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const handleBulkAdd = async () => {
     if (!bulkInput || !activePageId) {
       showError("يرجى إدخال البيانات واختيار صفحة");
@@ -245,10 +335,8 @@ const AdminPanel = () => {
 
     if (newServers.length > 0) {
       const { error } = await supabase.from('servers').insert(newServers);
-      if (error) {
-        showError(`فشل الإضافة الجماعية: ${error.message}`);
-        console.error("Bulk add error:", error);
-      } else {
+      if (error) showError(`فشل الإضافة الجماعية: ${error.message}`);
+      else {
         showSuccess(`تم إضافة ${newServers.length} قناة بنجاح`);
         fetchServers(activePageId);
         setBulkInput("");
@@ -378,6 +466,24 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
+            {/* Backup Section */}
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2">النسخ الاحتياطي</CardTitle>
+              </CardHeader>
+              <CardContent className="grid grid-cols-2 gap-2">
+                <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-xs h-12 gap-2">
+                  <Download size={16} /> تصدير
+                </Button>
+                <div className="relative">
+                  <input type="file" accept=".json" onChange={importBackup} className="absolute inset-0 opacity-0 cursor-pointer" />
+                  <Button variant="outline" className="w-full bg-slate-900/50 border-slate-800 text-xs h-12 gap-2">
+                    <Upload size={16} /> استيراد
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Bulk Add Section */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader>
@@ -430,9 +536,20 @@ const AdminPanel = () => {
                     <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl group hover:border-indigo-500/30 transition-all">
                       <div className="flex-grow text-right">
                         <div className="font-black text-sm">{s.name}</div>
-                        <div className="text-[10px] text-slate-500 truncate max-w-[400px]">{s.url}</div>
+                        <a 
+                          href={s.url.includes('<iframe') ? '#' : s.url} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-[10px] text-slate-500 truncate max-w-[300px] block hover:text-indigo-400 transition-colors"
+                        >
+                          {s.url}
+                        </a>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex flex-col gap-1 mr-2">
+                          <button onClick={() => moveChannel(i, 'up')} className="p-1 text-slate-500 hover:text-white disabled:opacity-20" disabled={i === 0}><ChevronUp size={14} /></button>
+                          <button onClick={() => moveChannel(i, 'down')} className="p-1 text-slate-500 hover:text-white disabled:opacity-20" disabled={i === servers.length - 1}><ChevronDown size={14} /></button>
+                        </div>
                         <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
                         <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                         <button onClick={() => copyToClipboard(s.url)} className="p-2 text-slate-500 hover:text-emerald-400"><Copy size={16} /></button>
@@ -465,6 +582,17 @@ const AdminPanel = () => {
             </Card>
           </div>
 
+        </div>
+
+        {/* Close Button */}
+        <div className="flex justify-center pt-8 pb-12">
+          <Button 
+            onClick={() => navigate('/real.html')} 
+            className="bg-red-600 hover:bg-red-700 text-white font-black px-12 py-8 rounded-2xl text-xl shadow-2xl shadow-red-500/20 flex items-center gap-3"
+          >
+            <XCircle size={28} />
+            إغلاق والعودة للمشاهدة
+          </Button>
         </div>
       </div>
 
