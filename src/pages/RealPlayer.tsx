@@ -8,9 +8,10 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { showSuccess } from "@/utils/toast";
 
 type ServerType = "iframe" | "m3u8" | "ts" | "youtube" | "facebook" | "twitch" | "kick" | "raw";
 
@@ -78,6 +79,24 @@ export default function RealPlayer() {
         lastTime.current = video.currentTime;
       }
     }, 2000);
+  };
+
+  const getCleanLink = (url: string) => {
+    if (url.includes('<iframe')) {
+      const match = url.match(/src=["']([^"']+)["']/);
+      return match ? match[1] : url;
+    }
+    return url;
+  };
+
+  const copyActiveLink = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const activeServer = servers[activeIndex];
+    if (activeServer) {
+      const cleanUrl = getCleanLink(activeServer.url);
+      navigator.clipboard.writeText(cleanUrl);
+      showSuccess("تم نسخ الرابط النظيف");
+    }
   };
 
   const buildPlayer = useCallback(
@@ -303,7 +322,6 @@ export default function RealPlayer() {
         if (serversData && serversData.length > 0) {
           setServers(serversData);
         } else {
-          // إذا كانت الصفحة موجودة ولكن بدون سيرفرات، نضع السيرفر الافتراضي
           const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
           setServers(def);
         }
@@ -319,7 +337,6 @@ export default function RealPlayer() {
     return () => destroy();
   }, [pageSlug, destroy]);
 
-  // تشغيل السيرفر الأول تلقائياً بمجرد جاهزية البيانات
   useEffect(() => {
     if (!fetching && servers.length > 0 && !isInitialized && containerRef.current) {
       buildPlayer(servers[0], false, false);
@@ -373,21 +390,18 @@ export default function RealPlayer() {
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       
-      {/* زر التكبير مزاح أكثر لليمين (left-24) */}
       <div className="absolute top-4 left-24 z-50">
         <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="ملء الشاشة">
           <Maximize size={28} />
         </button>
       </div>
 
-      {/* الزر الخفي تم نقله إلى الموقع السابق لزر التكبير (left-12) */}
       <div className="absolute top-4 left-12 z-50">
         <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
           <Settings size={8} />
         </button>
       </div>
 
-      {/* جهة اليمين: زر الرئيسية */}
       <div className="absolute top-4 right-6 md:right-24 z-50">
         <button onClick={() => navigate('/')} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="الرئيسية">
           <Home size={24} />
@@ -401,7 +415,7 @@ export default function RealPlayer() {
               key={i}
               onClick={() => switchServer(i)}
               className={cn(
-                "flex-1 min-w-[100px] px-3 py-2 text-[10px] sm:text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 border-l border-white/5",
+                "flex-1 min-w-[100px] px-3 py-2 text-[10px] sm:text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 border-l border-white/5 relative group",
                 i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
               )}
             >
@@ -412,6 +426,15 @@ export default function RealPlayer() {
                 </span>
               )}
               {srv.name}
+              
+              {/* زر النسخ يظهر عند التمرير أو إذا كان السيرفر نشطاً */}
+              <div 
+                onClick={copyActiveLink}
+                className="absolute left-1 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-emerald-400"
+                title="نسخ الرابط النظيف"
+              >
+                <Copy size={12} />
+              </div>
             </button>
           ))}
         </nav>

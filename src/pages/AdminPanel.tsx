@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, Home, Download, Upload, ListPlus } from "lucide-react";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, Home, Download, Upload, ListPlus, Copy } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -183,6 +183,20 @@ const AdminPanel = () => {
     }
   };
 
+  const getCleanLink = (url: string) => {
+    if (url.includes('<iframe')) {
+      const match = url.match(/src=["']([^"']+)["']/);
+      return match ? match[1] : url;
+    }
+    return url;
+  };
+
+  const copyToClipboard = (url: string) => {
+    const cleanUrl = getCleanLink(url);
+    navigator.clipboard.writeText(cleanUrl);
+    showSuccess("تم نسخ الرابط النظيف");
+  };
+
   const handleSubmit = async () => {
     if (!newName || !newUrl || !activePageId) return;
     const type = newUrl.includes('.m3u8') ? 'm3u8' : 'iframe';
@@ -279,8 +293,6 @@ const AdminPanel = () => {
         const data = JSON.parse(event.target?.result as string);
         if (data.pages && data.servers) {
           setIsLoading(true);
-          // ملاحظة: الاستيراد هنا سيضيف البيانات الجديدة بجانب القديمة
-          // إذا أردت مسح القديم أولاً يجب إضافة منطق الحذف هنا
           for (const page of data.pages) {
             const { data: pData } = await supabase.from('pages').upsert({ name: page.name, slug: page.slug }, { onConflict: 'slug' }).select().single();
             if (pData) {
@@ -469,6 +481,7 @@ const AdminPanel = () => {
                           <div className="text-[10px] text-slate-500 truncate">{s.url}</div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0">
+                          <button onClick={() => copyToClipboard(s.url)} className="p-1.5 text-slate-500 hover:text-emerald-400" title="نسخ الرابط النظيف"><Copy size={16} /></button>
                           <button onClick={() => s.id && deleteChannel(s.id)} className="p-1.5 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                           <button onClick={() => startEdit(s)} className="p-1.5 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
                           <button onClick={() => moveChannel(i, 'up')} className="p-1.5 text-slate-500 hover:text-white"><ChevronUp size={16} /></button>
