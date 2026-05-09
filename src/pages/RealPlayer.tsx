@@ -38,6 +38,7 @@ export default function RealPlayer() {
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isFBActive, setIsFBActive] = useState(false);
 
   /* ---- تحميل السيرفرات من localStorage ---- */
   useEffect(() => {
@@ -141,6 +142,8 @@ export default function RealPlayer() {
       setIsCodecUnsupported(false);
       
       const url = server.url.trim();
+      const isFB = isFacebookUrl(url);
+      setIsFBActive(isFB);
       
       const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
       const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || /\/\d+$/.test(url.split('?')[0]);
@@ -277,10 +280,8 @@ export default function RealPlayer() {
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
-      const isFB = isFacebookUrl(url);
 
       const muteParam = shouldUnmute ? "0" : "1";
-      const autoParam = "1";
 
       if (kickInfo) {
         const ifr = document.createElement("iframe");
@@ -297,8 +298,8 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       } else if (isFB) {
         const ifr = document.createElement("iframe");
-        // تحسين رابط فيسبوك لضمان ظهور أدوات التحكم (الجودة والصوت) ومنع القص
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&show_captions=0&autoplay=1&mute=${muteParam}&allowfullscreen=true&controls=1&adapt_to_wrapper=true`;
+        // استخدام رابط تضمين فيسبوك المطور لضمان ظهور كامل الأدوات ومنع القص
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&show_captions=0&autoplay=1&mute=${muteParam}&allowfullscreen=true&controls=1&width=auto`;
         ifr.style.width = "100%"; 
         ifr.style.height = "100%"; 
         ifr.style.border = "none";
@@ -417,10 +418,13 @@ export default function RealPlayer() {
         </nav>
 
         <div 
-          className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden"
+          className={cn(
+            "relative w-full bg-black rounded-b-2xl overflow-hidden transition-all duration-500",
+            isFBActive ? "min-h-[500px] h-auto" : "aspect-video"
+          )}
           onClick={handleUnmute}
         >
-          <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
+          <div ref={containerRef} className={cn("absolute inset-0 flex items-center justify-center", isFBActive && "relative min-h-[500px]")} />
           
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
@@ -471,7 +475,8 @@ export default function RealPlayer() {
           display: none !important;
         }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
-        #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
+        #main-player-wrapper:fullscreen .aspect-video, 
+        #main-player-wrapper:fullscreen .h-auto { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
         
         .youtube-crop-wrapper {
           position: relative;
