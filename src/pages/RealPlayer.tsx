@@ -8,8 +8,8 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy } from "lucide-react";
-import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy, ChevronLeft } from "lucide-react";
+import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { showSuccess } from "@/utils/toast";
@@ -24,6 +24,7 @@ interface Server {
 }
 
 interface PageInfo {
+  id: string;
   name: string;
   slug: string;
 }
@@ -44,6 +45,7 @@ export default function RealPlayer() {
 
   const [servers, setServers] = useState<Server[]>([]);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
+  const [otherPages, setOtherPages] = useState<PageInfo[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(true);
@@ -312,7 +314,7 @@ export default function RealPlayer() {
           if (pageSlug === 'default') {
             const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
             setServers(def);
-            setPageInfo({ name: "بث مباشر مباريات اليوم", slug: "default" });
+            setPageInfo({ id: 'default', name: "بث مباشر مباريات اليوم", slug: "default" });
           } else {
             setError("الصفحة غير موجودة");
           }
@@ -335,6 +337,16 @@ export default function RealPlayer() {
           const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
           setServers(def);
         }
+
+        // تحميل الصفحات الأخرى للروابط الداخلية
+        const { data: allPages } = await supabase
+          .from('pages')
+          .select('id, name, slug')
+          .neq('slug', pageSlug)
+          .limit(10);
+        
+        if (allPages) setOtherPages(allPages);
+
       } catch (err) {
         console.error("Error loading player data:", err);
         setError("فشل الاتصال بقاعدة البيانات");
@@ -538,11 +550,37 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      <footer className="w-full max-w-[1200px] mt-6 pb-4 flex flex-col items-center gap-2 text-[11px] text-slate-500 px-4">
+      {/* نظام الروابط الداخلية (Internal Linking) */}
+      <div className="w-full max-w-[1200px] mt-10" dir="rtl">
+        <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2">
+          <div className="w-2 h-8 bg-indigo-600 rounded-full" />
+          مباريات أخرى قد تهمك
+        </h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          {otherPages.map((page) => (
+            <Link 
+              key={page.id} 
+              to={`/p/${page.slug}`}
+              className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl hover:bg-indigo-600/20 hover:border-indigo-500/50 transition-all group flex items-center justify-between"
+            >
+              <span className="font-bold text-slate-200 group-hover:text-white">{page.name}</span>
+              <ChevronLeft size={18} className="text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-[-4px] transition-all" />
+            </Link>
+          ))}
+          {otherPages.length === 0 && (
+            <p className="text-slate-500 text-sm italic">لا توجد مباريات أخرى حالياً...</p>
+          )}
+        </div>
+      </div>
+
+      <footer className="w-full max-w-[1200px] mt-12 pb-8 flex flex-col items-center gap-4 text-[11px] text-slate-500 px-4 border-t border-white/5 pt-8">
         <div className="flex justify-between w-full items-center opacity-40">
           <span dir="ltr" className="font-black tracking-tight">Koora Live - Kora Online</span>
           <span dir="rtl" className="font-black">كورة لايف - ماتش لايف</span>
         </div>
+        <p className="text-center max-w-2xl leading-relaxed">
+          موقع كورة لايف الرسمي يقدم لكم بث مباشر للمباريات بجودة عالية وبدون تقطيع. تابع أهم مباريات اليوم في جميع الدوريات العالمية والعربية عبر سيرفراتنا المتعددة.
+        </p>
       </footer>
 
       <style>{`
