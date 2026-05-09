@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, Globe } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -233,7 +233,13 @@ const AdminPanel = () => {
         
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-black">لوحة التحكم</h1>
-          <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 h-10">خروج</Button>
+          <div className="flex gap-3">
+            <Button onClick={() => navigate('/')} variant="outline" className="bg-indigo-600/10 border-indigo-600/30 text-indigo-400 h-10 flex items-center gap-2">
+              <Globe size={18} />
+              العودة للموقع
+            </Button>
+            <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 h-10">خروج</Button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
