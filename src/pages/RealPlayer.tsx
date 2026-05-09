@@ -55,6 +55,12 @@ export default function RealPlayer() {
   const [isMixedContent, setIsMixedContent] = useState(false);
   const [isNativeMode, setIsNativeMode] = useState(false);
 
+  const tags = [
+    "كورة لايف", "بث مباشر", "يلا شوت", "كورة اون لاين", 
+    "مباريات اليوم", "بين سبورت", "الاسطورة", "كورة ستار", 
+    "يلا كورة", "ماي كورة", "بث مباريات"
+  ];
+
   useEffect(() => {
     return () => {
       destroy();
@@ -538,6 +544,15 @@ export default function RealPlayer() {
           <p className="text-[10px] text-slate-500 font-bold">استخدم هذا الخيار إذا كنت تسمع الصوت ولا ترى الصورة في روابط TS</p>
         </div>
       )}
+
+      {/* قسم الكلمات المفتاحية (Tags) */}
+      <div className="mt-8 flex flex-wrap justify-center gap-2 max-w-3xl" dir="rtl">
+        {tags.map((tag, index) => (
+          <span key={index} className="px-3 py-1.5 bg-white/5 border border-white/10 rounded-full text-[10px] font-bold text-slate-500 hover:text-[#00e676] hover:border-[#00e676]/30 transition-colors cursor-default">
+            #{tag}
+          </span>
+        ))}
+      </div>
 
       <footer className="w-full max-w-[1200px] mt-12 px-4 text-center" dir="rtl">
         <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">
