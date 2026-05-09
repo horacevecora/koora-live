@@ -112,7 +112,7 @@ export default function RealPlayer() {
       destroy();
       setLoading(true);
       setError(null);
-      setShowUnmuteHint(false); // افتراضياً لا يظهر
+      setShowUnmuteHint(false);
       
       const url = server.url.trim();
       const isIPTV = (url.includes(":") && url.split(":").length > 2) || 
@@ -132,7 +132,6 @@ export default function RealPlayer() {
         video.setAttribute("crossorigin", "anonymous");
         container.appendChild(video);
 
-        // مراقبة حالة الصوت لإخفاء الإشعار إذا تم تفعيله
         video.onvolumechange = () => {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
@@ -146,7 +145,6 @@ export default function RealPlayer() {
         } else {
           video.src = url;
           video.play().then(() => {
-            // إذا نجح التشغيل وكان مكتوماً، نظهر الإشعار
             if (video.muted) setShowUnmuteHint(true);
           }).catch(() => {
             setShowUnmuteHint(true);
@@ -216,7 +214,7 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 3. روابط المنصات (لا نظهر فيها الإشعار الخاص بنا) */
+      /* 3. روابط المنصات */
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
@@ -225,7 +223,8 @@ export default function RealPlayer() {
       if (kickInfo) {
         const ifr = document.createElement("iframe");
         const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
-        ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=true`;
+        // محاولة طلب الصوت ولكن المتصفح قد يفرضه صامتاً
+        ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=false`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -239,7 +238,7 @@ export default function RealPlayer() {
       if (twitchChannel) {
         const ifr = document.createElement("iframe");
         const domain = window.location.hostname;
-        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${domain}&autoplay=true&muted=true`;
+        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${domain}&autoplay=true&muted=false`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -253,7 +252,7 @@ export default function RealPlayer() {
       if (isFB) {
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=1&allowfullscreen=true`;
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0&allowfullscreen=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
@@ -268,7 +267,7 @@ export default function RealPlayer() {
         const wrapper = document.createElement("div");
         wrapper.className = "youtube-crop-wrapper";
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&mute=1&iv_load_policy=3&controls=1`;
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&mute=0&iv_load_policy=3&controls=1`;
         ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen";
         ifr.allowFullscreen = true;
         wrapper.appendChild(ifr);
