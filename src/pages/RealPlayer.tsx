@@ -27,6 +27,8 @@ export default function RealPlayer() {
   const plyrRef = useRef<Plyr | null>(null);
   const hlsRef = useRef<Hls | null>(null);
   const mpegtsRef = useRef<any>(null);
+  const monitorInterval = useRef<NodeJS.Timeout | null>(null);
+  const lastTime = useRef<number>(0);
 
   const [servers, setServers] = useState<Server[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -34,7 +36,6 @@ export default function RealPlayer() {
   const [error, setError] = useState<string | null>(null);
   const [clickCount, setClickCount] = useState(0);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -66,6 +67,10 @@ export default function RealPlayer() {
 
   /* ---- تنظيف المشغّل القديم ---- */
   const destroy = useCallback(() => {
+    if (monitorInterval.current) {
+      clearInterval(monitorInterval.current);
+      monitorInterval.current = null;
+    }
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
@@ -79,6 +84,25 @@ export default function RealPlayer() {
       plyrRef.current = null;
     }
   }, []);
+
+  /* ---- نظام المراقب الذكي لمنع التجمد ---- */
+  const startStallMonitor = (video: HTMLVideoElement) => {
+    if (monitorInterval.current) clearInterval(monitorInterval.current);
+    
+    monitorInterval.current = setInterval(() => {
+      if (!video.paused && video.readyState >= 2) {
+        if (video.currentTime === lastTime.current) {
+          // الفيديو متوقف (تجمد) رغم أنه في حالة تشغيل
+          if (video.buffered.length > 0) {
+            const end = video.buffered.end(video.buffered.length - 1);
+            // دفع الفيديو لنهاية التخزين لاستئناف الحركة
+            video.currentTime = end - 0.2;
+          }
+        }
+        lastTime.current = video.currentTime;
+      }
+    }, 2000);
+  };
 
   /* ---- استخراج المعرفات من الروابط ---- */
   const getYouTubeId = (url: string) => {
@@ -137,25 +161,20 @@ export default function RealPlayer() {
         video.setAttribute("referrerpolicy", "no-referrer");
         container.appendChild(video);
 
-        // معالجة التوقف المفاجئ (Stall Recovery)
         video.onwaiting = () => setLoading(true);
         video.onplaying = () => setLoading(false);
-        video.onstalled = () => {
-          // إذا توقف البث، نحاول القفز لنهاية التخزين لاستئناف العمل
-          if (video.buffered.length > 0) {
-            video.currentTime = video.buffered.end(video.buffered.length - 1) - 0.1;
-          }
-        };
 
         const attemptPlay = () => {
           video.play().then(() => {
             setLoading(false);
             if (video.muted) setShowUnmuteHint(true);
+            startStallMonitor(video);
           }).catch(() => {
             video.muted = true;
             video.play().then(() => {
               setLoading(false);
               setShowUnmuteHint(true);
+              startStallMonitor(video);
             });
           });
         };
@@ -173,9 +192,9 @@ export default function RealPlayer() {
             }, {
               enableWorker: true, 
               enableStashBuffer: true, 
-              stashInitialSize: 1024 * 1024, // 1MB buffer (مثل VLC) لضمان استقرار البث
+              stashInitialSize: 1024 * 1024 * 2, // 2MB buffer لضمان استقرار فائق
               liveBufferLatencyChasing: true, 
-              liveBufferLatencyMaxLatency: 10, // السماح بتأخير حتى 10 ثوانٍ لمنع التقطيع
+              liveBufferLatencyMaxLatency: 15, // السماح بتأخير أكبر لتفادي التقطيع
               autoCleanupSourceBuffer: true, 
               lazyLoad: false,
               statisticsInfoReportInterval: 1000
@@ -224,8 +243,9 @@ export default function RealPlayer() {
           if (Hls.isSupported()) {
             const hls = new Hls({ 
               xhrSetup: (xhr) => { xhr.withCredentials = false; },
-              liveSyncDurationCount: 5, // زيادة عدد القطع المخزنة لتقليل التقطيع
-              liveMaxLatencyDurationCount: 15,
+              liveSyncDurationCount: 8, // زيادة عدد القطع المخزنة لضمان الاستقرار
+              liveMaxLatencyDurationCount: 20,
+              maxBufferLength: 60,
               enableWorker: true
             });
             hlsRef.current = hls;
@@ -238,6 +258,7 @@ export default function RealPlayer() {
                 video.play();
                 setShowUnmuteHint(true);
               });
+              startStallMonitor(video);
             });
           } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
             video.src = url;
@@ -247,6 +268,7 @@ export default function RealPlayer() {
               setShowUnmuteHint(true);
             });
             setLoading(false);
+            startStallMonitor(video);
           }
         };
         startHls();
@@ -313,7 +335,6 @@ export default function RealPlayer() {
     (index: number) => {
       if (servers[index]) {
         setHasInteracted(true);
-        setRetryCount(0);
         setActiveIndex(index);
         buildPlayer(servers[index], false, true);
       }
@@ -397,7 +418,7 @@ export default function RealPlayer() {
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
-              <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ تحميل البث...</p>
+              <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ استقرار البث...</p>
             </div>
           )}
 
@@ -407,7 +428,7 @@ export default function RealPlayer() {
               onClick={(e) => { e.stopPropagation(); handleUnmute(); }}
             >
               <Volume2 size={20} />
-              <span className="font-black text-sm">انقر على الفيديو لتشغيل الصوت</span>
+              <span className="font-black text-sm">انقر لتشغيل الصوت</span>
             </div>
           )}
 
