@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight, Loader2 } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight, Loader2, Home } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -49,7 +49,6 @@ export default function RealPlayer() {
     const loadData = async () => {
       setFetching(true);
       try {
-        // 1. جلب الصفحة بناءً على الـ slug
         const { data: pageData, error: pageError } = await supabase
           .from('pages')
           .select('id')
@@ -58,7 +57,6 @@ export default function RealPlayer() {
 
         if (pageError || !pageData) {
           if (pageSlug === 'default') {
-            // إذا كانت الصفحة الرئيسية غير موجودة، نستخدم سيرفر افتراضي
             const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
             setServers(def);
             buildPlayer(def[0], false, false);
@@ -68,7 +66,6 @@ export default function RealPlayer() {
           return;
         }
 
-        // 2. جلب القنوات لهذه الصفحة
         const { data: serversData, error: serversError } = await supabase
           .from('servers')
           .select('*')
@@ -128,28 +125,6 @@ export default function RealPlayer() {
       }
     }, 2000);
   };
-
-  const getYouTubeId = (url: string) => {
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regExp);
-    return (match && match[2].length === 11) ? match[2] : null;
-  };
-
-  const getTwitchChannel = (url: string) => {
-    const match = url.match(/(?:twitch\.tv\/)([a-zA-Z0-9_]+)/);
-    return match ? match[1] : null;
-  };
-
-  const getKickInfo = (url: string) => {
-    if (url.includes('.m3u8')) return null;
-    const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
-    if (videoMatch) return { type: 'video', id: videoMatch[1] };
-    const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
-    if (channelMatch && channelMatch[1] !== 'video' && channelMatch[1] !== 'api') return { type: 'channel', id: channelMatch[1] };
-    return null;
-  };
-
-  const isFacebookUrl = (url: string) => url.includes("facebook.com") || url.includes("fb.watch");
 
   const buildPlayer = useCallback(
     (server: Server, forceNative = false, shouldUnmute = hasInteracted) => {
@@ -276,6 +251,26 @@ export default function RealPlayer() {
         return;
       }
 
+      // ... (بقية منطق المشغل للـ iframe و YouTube و Twitch و Kick و Facebook)
+      const getYouTubeId = (url: string) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+      };
+      const getTwitchChannel = (url: string) => {
+        const match = url.match(/(?:twitch\.tv\/)([a-zA-Z0-9_]+)/);
+        return match ? match[1] : null;
+      };
+      const getKickInfo = (url: string) => {
+        if (url.includes('.m3u8')) return null;
+        const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
+        if (videoMatch) return { type: 'video', id: videoMatch[1] };
+        const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
+        if (channelMatch && channelMatch[1] !== 'video' && channelMatch[1] !== 'api') return { type: 'channel', id: channelMatch[1] };
+        return null;
+      };
+      const isFacebookUrl = (url: string) => url.includes("facebook.com") || url.includes("fb.watch");
+
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
@@ -356,7 +351,7 @@ export default function RealPlayer() {
     else document.exitFullscreen();
   };
 
-  const isCurrentFB = servers[activeIndex] && isFacebookUrl(servers[activeIndex].url);
+  const isCurrentFB = servers[activeIndex] && servers[activeIndex].url.includes("facebook.com");
 
   if (fetching) {
     return (
@@ -370,7 +365,10 @@ export default function RealPlayer() {
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       <div className="absolute top-4 left-12 right-12 flex justify-between items-center z-50 pointer-events-none">
-        <div className="flex gap-6 items-center pointer-events-auto">
+        <div className="flex gap-4 items-center pointer-events-auto">
+          <button onClick={() => navigate('/')} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="الرئيسية">
+            <Home size={24} />
+          </button>
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
           </button>
@@ -414,15 +412,6 @@ export default function RealPlayer() {
             <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors" onClick={(e) => { e.stopPropagation(); handleUnmute(); }}>
               <Volume2 size={20} />
               <span className="font-black text-sm">انقر لتشغيل الصوت</span>
-            </div>
-          )}
-          {showUnmuteHint && !loading && isCurrentFB && (
-            <div className="absolute bottom-12 right-4 z-30 flex flex-col items-end pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-700">
-              <div className="bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 mb-1 border border-white/20">
-                <Volume2 size={16} className="animate-pulse" />
-                <span className="font-black text-[11px] whitespace-nowrap">شغل الصوت من هنا</span>
-              </div>
-              <div className="mr-4 text-indigo-500 animate-bounce"><ArrowDownRight size={24} /></div>
             </div>
           )}
           {error && !loading && (

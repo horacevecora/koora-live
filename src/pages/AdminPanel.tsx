@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, ShieldCheck } from "lucide-react";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, ShieldCheck, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -56,7 +56,6 @@ const AdminPanel = () => {
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      // جلب الصفحات
       const { data: pagesData, error: pagesError } = await supabase
         .from('pages')
         .select('*')
@@ -83,7 +82,6 @@ const AdminPanel = () => {
         setActivePageSlug(newPage.slug);
       }
 
-      // جلب الأكواد الخارجية
       const { data: settingsData } = await supabase
         .from('site_settings')
         .select('value')
@@ -117,14 +115,13 @@ const AdminPanel = () => {
   const handleLogin = async () => {
     setIsLoading(true);
     try {
-      // جلب كلمة المرور من قاعدة البيانات
       const { data, error } = await supabase
         .from('site_settings')
         .select('value')
         .eq('key', 'admin_password')
         .single();
 
-      const correctPassword = data?.value || "simo"; // الافتراضية simo إذا لم توجد في القاعدة
+      const correctPassword = data?.value || "simo";
 
       if (passwordInput === correctPassword) {
         setIsAuthenticated(true);
@@ -136,7 +133,6 @@ const AdminPanel = () => {
         setPasswordInput("");
       }
     } catch (err) {
-      // في حال حدوث خطأ (مثل عدم وجود الجدول بعد)، نستخدم الافتراضية
       if (passwordInput === "simo") {
         setIsAuthenticated(true);
         sessionStorage.setItem('admin_auth', 'true');
@@ -316,6 +312,13 @@ const AdminPanel = () => {
     <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans" dir="rtl">
       <div className="max-w-5xl mx-auto space-y-8">
         
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-black text-indigo-400">لوحة التحكم</h1>
+          <Button onClick={() => navigate('/')} variant="outline" className="border-slate-700 text-slate-300 hover:bg-white/5 gap-2">
+            <Home size={18} /> الصفحة الرئيسية
+          </Button>
+        </div>
+
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
