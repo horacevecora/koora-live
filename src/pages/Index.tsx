@@ -61,14 +61,26 @@ const Index = () => {
 
       {/* الشريط العلوي */}
       <header className="relative z-50 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-md border-b border-white/5">
-        <div className="flex flex-col items-start">
+        {/* جهة اليمين: زر جدول المباريات */}
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => navigate('/matches')}
+            className="flex items-center gap-2 bg-white/5 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-white/10 transition-all border border-white/10"
+          >
+            <List size={18} />
+            <span>جدول المباريات</span>
+          </button>
+        </div>
+
+        {/* جهة اليسار: النصوص والشعار */}
+        <div className="flex flex-col items-end">
           <div className="flex items-center gap-1 text-[#00e676] font-black text-2xl italic tracking-tighter leading-none">
             <span>Koora</span>
             <span className="text-white">Live</span>
           </div>
           <span className="text-[10px] text-slate-400 font-bold mt-1">كورة أون لاين | ماتش لايف</span>
           
-          {/* الشعار الاحترافي (Logo) - تم نقله ليكون أسفل النص مباشرة */}
+          {/* الشعار الاحترافي (Logo) - أسفل النص في جهة اليسار */}
           <div className="mt-4 hidden lg:block">
             <div className="relative group cursor-pointer" onClick={() => navigate('/real.html')}>
               <div className="absolute inset-0 bg-[#00e676] blur-[40px] opacity-10 rounded-full" />
@@ -79,16 +91,6 @@ const Index = () => {
               />
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate('/matches')}
-            className="flex items-center gap-2 bg-white/5 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-white/10 transition-all border border-white/10"
-          >
-            <List size={18} />
-            <span>جدول المباريات</span>
-          </button>
         </div>
       </header>
 
