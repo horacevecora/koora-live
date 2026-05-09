@@ -141,22 +141,34 @@ export default function RealPlayer() {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        // استخدام mpegts.js للروابط التي تبدو كـ TS
+        // استخدام mpegts.js للروابط التي تبدو كـ TS مع إعدادات محسنة للصورة
         if (isTS && mpegts.getFeatureList().mseLivePlayback) {
           try {
             const player = mpegts.createPlayer({ 
-              type: 'mse', 
+              type: 'mpegts', // تغيير النوع لضمان معالجة الفيديو
               isLive: true, 
               url: url,
               cors: true
+            }, {
+              enableWorker: true,
+              enableStashBuffer: false, // تقليل التأخير لتحسين مزامنة الصورة
+              stashInitialSize: 128,
+              lazyLoad: false
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
             player.load();
-            // استخدام Promise.resolve للتعامل مع void | Promise<void>
+            
             Promise.resolve(player.play()).then(() => {
               if (video.muted) setShowUnmuteHint(true);
             }).catch(() => setShowUnmuteHint(true));
+
+            // مراقبة الأخطاء لإعادة التشغيل إذا توقفت الصورة
+            player.on(mpegts.Events.ERROR, () => {
+              video.src = url;
+              video.play().catch(() => {});
+            });
+
           } catch (e) {
             video.src = url;
             video.play().catch(() => setShowUnmuteHint(true));
