@@ -1,7 +1,31 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="256" cy="256" r="240" fill="#020617" stroke="#00e676" stroke-width="20"/>
-  <path d="M256 40C136.7 40 40 136.7 40 256s96.7 216 216 216 216-96.7 216-216S375.3 40 256 40zm0 392c-23.1 0-45.2-4.3-65.5-12.1l41.4-71.7c4.1-7.1 4.1-15.9 0-23L184.1 244c-4.1-7.1-11.7-11.5-19.9-11.5h-82.8c-5.4 14.5-8.4 30.1-8.4 46.5 0 17.4 3.3 34 9.3 49.3l65.5-37.8 41.4 71.7c4.1 7.1 11.7 11.5 19.9 11.5h82.8c5.4-14.5 8.4-30.1 8.4-46.5 0-17.4-3.3-34-9.3-49.3l-65.5 37.8z" fill="#00e676"/>
-  <circle cx="256" cy="256" r="60" fill="#00e676"/>
-  <path d="M380 256c0-68.5-55.5-124-124-124" stroke="#ffffff" stroke-width="20" stroke-linecap="round"/>
-  <path d="M330 256c0-40.9-33.1-74-74-74" stroke="#ffffff" stroke-width="15" stroke-linecap="round"/>
+  <!-- الخلفية الدائرية مع توهج خفيف -->
+  <circle cx="256" cy="256" r="250" fill="#020617" />
+  <circle cx="256" cy="256" r="240" stroke="#00e676" stroke-width="12" stroke-dasharray="20 10" opacity="0.5" />
+  
+  <!-- جسم كرة القدم الرئيسي -->
+  <circle cx="256" cy="256" r="200" fill="white" />
+  
+  <!-- نمط المضلعات (الخماسي) المميز لكرة القدم -->
+  <g fill="#020617">
+    <!-- المضلع المركزي -->
+    <path d="M256 180L320 226V300L256 346L192 300V226L256 180Z" fill="#00e676" />
+    
+    <!-- المضلعات المحيطة -->
+    <path d="M256 56L300 100H212L256 56Z" />
+    <path d="M456 256L412 212V300L456 256Z" />
+    <path d="M56 256L100 300V212L56 256Z" />
+    <path d="M256 456L212 412H300L256 456Z" />
+    
+    <!-- خطوط الربط بين المضلعات لإعطاء شكل الكرة -->
+    <path d="M320 226L412 212" stroke="#020617" stroke-width="8" />
+    <path d="M320 300L412 300" stroke="#020617" stroke-width="8" />
+    <path d="M256 346L256 412" stroke="#020617" stroke-width="8" />
+    <path d="M192 300L100 300" stroke="#020617" stroke-width="8" />
+    <path d="M192 226L100 212" stroke="#020617" stroke-width="8" />
+    <path d="M256 180L256 100" stroke="#020617" stroke-width="8" />
+  </g>
+  
+  <!-- تأثير لمعان خفيف -->
+  <path d="M140 140C160 120 200 100 256 100" stroke="white" stroke-width="15" stroke-linecap="round" opacity="0.8" />
 </svg>
