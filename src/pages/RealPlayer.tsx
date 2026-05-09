@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
@@ -38,7 +38,6 @@ export default function RealPlayer() {
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
-  const [isFBActive, setIsFBActive] = useState(false);
 
   /* ---- تحميل السيرفرات من localStorage ---- */
   useEffect(() => {
@@ -142,8 +141,6 @@ export default function RealPlayer() {
       setIsCodecUnsupported(false);
       
       const url = server.url.trim();
-      const isFB = isFacebookUrl(url);
-      setIsFBActive(isFB);
       
       const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
       const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || /\/\d+$/.test(url.split('?')[0]);
@@ -280,8 +277,10 @@ export default function RealPlayer() {
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
+      const isFB = isFacebookUrl(url);
 
       const muteParam = shouldUnmute ? "0" : "1";
+      const autoParam = "1";
 
       if (kickInfo) {
         const ifr = document.createElement("iframe");
@@ -298,8 +297,8 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       } else if (isFB) {
         const ifr = document.createElement("iframe");
-        // استخدام رابط تضمين فيسبوك المطور مع تفعيل adapt_to_wrapper لضمان ظهور كامل الأدوات
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&show_captions=0&autoplay=1&mute=${muteParam}&allowfullscreen=true&controls=1&adapt_to_wrapper=true`;
+        // تحسين تضمين فيسبوك لملء الشاشة والتكيف مع الحاوية
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=${muteParam}&allowfullscreen=true&adapt_to_wrapper=true`;
         ifr.style.width = "100%"; 
         ifr.style.height = "100%"; 
         ifr.style.border = "none";
@@ -380,14 +379,14 @@ export default function RealPlayer() {
   };
 
   return (
-    <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-4 md:px-12 pb-6 font-sans relative overflow-hidden">
-      <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-50 pointer-events-none">
-        <div className="flex gap-4 items-center pointer-events-auto">
+    <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
+      <div className="absolute top-4 left-12 right-12 flex justify-between items-center z-50 pointer-events-none">
+        <div className="flex gap-6 items-center pointer-events-auto">
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
           </button>
           <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
-            <Maximize size={24} />
+            <Maximize size={28} />
           </button>
         </div>
       </div>
@@ -396,38 +395,29 @@ export default function RealPlayer() {
         id="main-player-wrapper" 
         className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]"
       >
-        {/* شريط السيرفرات المحسن - قابل للتمرير */}
-        <div className="relative group" dir="rtl">
-          <nav className="flex overflow-x-auto no-scrollbar bg-slate-900/90 backdrop-blur border-b border-white/5 rounded-t-2xl">
-            {servers.map((srv, i) => (
-              <button
-                key={i}
-                onClick={() => switchServer(i)}
-                className={cn(
-                  "flex-shrink-0 px-6 py-4 text-[11px] font-black transition-all flex items-center justify-center gap-2 border-l border-white/5",
-                  i === activeIndex ? "bg-indigo-600 text-white shadow-inner" : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
-                )}
-              >
-                {i === activeIndex && (
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                )}
-                {srv.name}
-              </button>
-            ))}
-          </nav>
-          {/* تلميح للتمرير في الموبايل */}
-          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-slate-900 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity md:hidden" />
-          <div className="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-slate-900 to-transparent pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity md:hidden" />
-        </div>
+        <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5 rounded-t-2xl overflow-hidden" dir="rtl">
+          {servers.map((srv, i) => (
+            <button
+              key={i}
+              onClick={() => switchServer(i)}
+              className={cn(
+                "flex-1 min-w-[100px] px-3 py-2 text-[10px] sm:text-xs font-extrabold transition-all flex items-center justify-center gap-1.5 border-l border-white/5",
+                i === activeIndex ? "bg-indigo-600 text-white" : "text-slate-400 hover:bg-white/5"
+              )}
+            >
+              {i === activeIndex && (
+                <span className="relative flex h-1 w-1">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-1 w-1 bg-emerald-500"></span>
+                </span>
+              )}
+              {srv.name}
+            </button>
+          ))}
+        </nav>
 
         <div 
-          className={cn(
-            "relative w-full bg-black rounded-b-2xl overflow-hidden transition-all duration-500",
-            isFBActive ? "aspect-video md:aspect-[16/9] min-h-[300px] md:min-h-[500px]" : "aspect-video"
-          )}
+          className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden"
           onClick={handleUnmute}
         >
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
@@ -475,18 +465,13 @@ export default function RealPlayer() {
       <style>{`
         :root { --plyr-color-main: #6366f1; }
         .plyr { width: 100%; height: 100%; }
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
         .live-video-element::-webkit-media-controls-timeline,
         .live-video-element::-webkit-media-controls-current-time-display,
         .live-video-element::-webkit-media-controls-time-remaining-display {
           display: none !important;
         }
-        
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
-        #main-player-wrapper:fullscreen .aspect-video, 
-        #main-player-wrapper:fullscreen .h-auto { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
+        #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
         
         .youtube-crop-wrapper {
           position: relative;
