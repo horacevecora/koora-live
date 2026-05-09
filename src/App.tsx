@@ -10,6 +10,7 @@ import PlayerPage from "./pages/PlayerPage";
 import RealPlayer from "./pages/RealPlayer";
 import AdminPanel from "./pages/AdminPanel";
 import Login from "./pages/Login";
+import Matches from "./pages/Matches";
 import ExternalScripts from "./components/ExternalScripts";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/matches" element={<Matches />} />
             <Route path="/player" element={<PlayerPage />} />
             <Route path="/real.html" element={<RealPlayer />} />
             <Route path="/p/:slug" element={<RealPlayer />} />
