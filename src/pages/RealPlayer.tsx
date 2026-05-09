@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -52,8 +52,8 @@ export default function RealPlayer() {
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isMixedContent, setIsMixedContent] = useState(false);
 
-  // إضافة الميتا تاج للرأس لتعطيل المرجع (ضروري لروابط IPTV)
   useEffect(() => {
     const meta = document.createElement('meta');
     meta.name = "referrer";
@@ -116,10 +116,20 @@ export default function RealPlayer() {
       setLoading(true);
       setError(null);
       setShowUnmuteHint(false);
+      setIsMixedContent(false);
       
       const url = server.url.trim();
+      const isHttps = window.location.protocol === 'https:';
+      const isUrlHttp = url.startsWith('http:');
+      
+      if (isHttps && isUrlHttp) {
+        setIsMixedContent(true);
+      }
+
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes(".ts"));
+      // تحسين التعرف على روابط Xtream Codes التي تنتهي بأرقام
+      const isXtream = /:\d+\/.*?\/\d+$/.test(url);
+      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes(".ts") || isXtream || server.type === "ts");
 
       if (isM3U8) {
         const video = document.createElement("video");
@@ -159,7 +169,6 @@ export default function RealPlayer() {
           });
           hls.on(Hls.Events.ERROR, (event, data) => {
             if (data.fatal) {
-              console.error("HLS Fatal Error:", data);
               setError("فشل تحميل البث. قد يكون الرابط متوقفاً أو يحتاج لتحديث.");
               setLoading(false);
             }
@@ -191,7 +200,11 @@ export default function RealPlayer() {
         video.onwaiting = () => setLoading(true);
         video.onplaying = () => setLoading(false);
         video.onerror = () => {
-          setError("خطأ في تشغيل الرابط المباشر.");
+          if (isHttps && isUrlHttp) {
+            setError("المتصفح يمنع تشغيل روابط HTTP على موقع آمن. يرجى استخدام رابط HTTPS أو السماح بالمحتوى غير الآمن من إعدادات المتصفح.");
+          } else {
+            setError("خطأ في تشغيل الرابط المباشر.");
+          }
           setLoading(false);
         };
 
@@ -216,23 +229,21 @@ export default function RealPlayer() {
           return;
         }
 
-        if (url.includes(".ts")) {
-          try {
-            const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: url, cors: true });
-            mpegtsRef.current = player;
-            player.attachMediaElement(video);
-            player.load();
-            attemptPlay();
-          } catch (e) {
-            buildPlayer(server, true, shouldUnmute);
-          }
-        } else {
+        // استخدام mpegts للروابط التي قد تكون TS
+        try {
+          const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: url, cors: true });
+          mpegtsRef.current = player;
+          player.attachMediaElement(video);
+          player.load();
+          attemptPlay();
+        } catch (e) {
           video.src = url;
           attemptPlay();
         }
         return;
       }
 
+      // باقي أنواع الروابط (YouTube, Twitch, Iframe...)
       const getYouTubeId = (url: string) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
@@ -391,39 +402,6 @@ export default function RealPlayer() {
 
   const isCurrentFB = servers[activeIndex] && servers[activeIndex].url.includes("facebook.com");
 
-  const pageTitle = pageInfo ? `${pageInfo.name} - كورة لايف بث مباشر` : "بث مباشر مباريات اليوم - كورة لايف";
-  const pageDesc = pageInfo ? `شاهد ${pageInfo.name} بث مباشر بدون تقطيع بجودة عالية على كورة لايف الرسمي.` : "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع.";
-  const canonicalUrl = `https://${window.location.hostname}${location.pathname}`;
-
-  // بيانات منظمة للفيديو والبث المباشر
-  const schemaData = {
-    "@context": "https://schema.org",
-    "@type": "VideoObject",
-    "name": pageTitle,
-    "description": pageDesc,
-    "thumbnailUrl": [
-      `https://${window.location.hostname}/favicon.svg`
-    ],
-    "uploadDate": new Date().toISOString(),
-    "embedUrl": servers[activeIndex] ? getCleanLink(servers[activeIndex].url) : "",
-    "interactionStatistic": {
-      "@type": "InteractionCounter",
-      "interactionType": { "@type": "WatchAction" },
-      "userInteractionCount": 12500
-    },
-    "publication": {
-      "@type": "BroadcastEvent",
-      "isLiveBroadcast": true,
-      "startDate": new Date().toISOString()
-    }
-  };
-
-  const seoKeywords = [
-    "كورة لايف", "بث مباشر", "مباريات اليوم", "يلا شوت", "كورة اون لاين", 
-    "بين سبورت", "الاسطورة", "كورة ستار", "يلا كورة", "ماي كورة", 
-    "بث مباريات", "koora live", "yalla shoot", "live matches", "kora online"
-  ];
-
   if (fetching) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white">
@@ -436,12 +414,7 @@ export default function RealPlayer() {
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       <Helmet>
-        <title>{pageTitle}</title>
-        <meta name="description" content={pageDesc} />
-        <link rel="canonical" href={canonicalUrl} />
-        <script type="application/ld+json">
-          {JSON.stringify(schemaData)}
-        </script>
+        <title>{pageInfo ? `${pageInfo.name} - كورة لايف` : "بث مباشر"}</title>
       </Helmet>
 
       <div className="absolute top-4 left-24 z-50">
@@ -482,21 +455,31 @@ export default function RealPlayer() {
 
         <div className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden" onClick={handleUnmute}>
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
+          
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
               <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ استقرار البث...</p>
             </div>
           )}
+
+          {isMixedContent && !loading && !error && (
+            <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-amber-500/90 text-black px-4 py-2 rounded-lg flex items-center gap-2 text-[10px] font-bold shadow-xl">
+              <ShieldAlert size={14} />
+              تنبيه: الرابط غير آمن (HTTP). إذا لم يعمل، يرجى السماح بالمحتوى غير الآمن في المتصفح.
+            </div>
+          )}
+
           {showUnmuteHint && !loading && !isCurrentFB && (
             <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors" onClick={(e) => { e.stopPropagation(); handleUnmute(); }}>
               <Volume2 size={20} />
               <span className="font-black text-sm">انقر لتشغيل الصوت</span>
             </div>
           )}
+
           {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
-              <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 mb-4">
+              <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 mb-4 max-w-md">
                 <AlertTriangle className="text-red-500 mx-auto mb-2" size={32} />
                 <p className="text-red-400 font-black text-sm">{error}</p>
               </div>
@@ -506,16 +489,8 @@ export default function RealPlayer() {
         </div>
       </article>
 
-      {/* قسم الكلمات المفتاحية للـ SEO في الأسفل */}
       <footer className="w-full max-w-[1200px] mt-12 px-4 text-center" dir="rtl">
-        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 opacity-30 hover:opacity-60 transition-opacity duration-500">
-          {seoKeywords.map((keyword, idx) => (
-            <span key={idx} className="text-[9px] md:text-[10px] text-slate-400 font-medium cursor-default">
-              {keyword}
-            </span>
-          ))}
-        </div>
-        <p className="mt-4 text-[8px] text-slate-600 font-bold uppercase tracking-widest">
+        <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">
           Koora Live Streaming Service - All Rights Reserved © 2026
         </p>
       </footer>
