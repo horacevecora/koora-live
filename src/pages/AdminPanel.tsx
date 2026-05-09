@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, ShieldCheck, Home } from "lucide-react";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, Home } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,7 +43,6 @@ const AdminPanel = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [externalScripts, setExternalScripts] = useState("");
-  const [newAdminPassword, setNewAdminPassword] = useState("");
 
   useEffect(() => {
     const authStatus = sessionStorage.getItem('admin_auth');
@@ -142,24 +141,6 @@ const AdminPanel = () => {
       }
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const updateAdminPassword = async () => {
-    if (!newAdminPassword || newAdminPassword.length < 4) {
-      showError("كلمة المرور يجب أن تكون 4 أحرف على الأقل");
-      return;
-    }
-
-    const { error } = await supabase
-      .from('site_settings')
-      .upsert({ key: 'admin_password', value: newAdminPassword }, { onConflict: 'key' });
-    
-    if (error) {
-      showError("فشل تحديث كلمة المرور");
-    } else {
-      showSuccess("تم تغيير كلمة المرور بنجاح");
-      setNewAdminPassword("");
     }
   };
 
@@ -347,25 +328,6 @@ const AdminPanel = () => {
                         </div>
                       </div>
                     ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
-                <CardHeader>
-                  <CardTitle className="text-md flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /> إعدادات الأمان</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-[10px] text-slate-400">تغيير كلمة مرور لوحة التحكم</p>
-                    <Input 
-                      type="password" 
-                      placeholder="كلمة المرور الجديدة" 
-                      value={newAdminPassword} 
-                      onChange={e => setNewAdminPassword(e.target.value)} 
-                      className="bg-slate-900 border-slate-700 text-xs" 
-                    />
-                    <Button onClick={updateAdminPassword} className="w-full bg-emerald-600 hover:bg-emerald-700 text-xs h-8">تحديث كلمة المرور</Button>
                   </div>
                 </CardContent>
               </Card>
