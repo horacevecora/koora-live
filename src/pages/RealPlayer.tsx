@@ -364,8 +364,8 @@ export default function RealPlayer() {
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       
-      {/* زر التكبير مزاح أكثر لليمين (left-20) */}
-      <div className="absolute top-4 left-20 z-50">
+      {/* زر التكبير مزاح أكثر لليمين (left-24) */}
+      <div className="absolute top-4 left-24 z-50">
         <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="ملء الشاشة">
           <Maximize size={28} />
         </button>
