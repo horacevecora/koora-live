@@ -392,7 +392,7 @@ export default function RealPlayer() {
   const pageDesc = pageInfo ? `شاهد ${pageInfo.name} بث مباشر بدون تقطيع بجودة عالية على كورة لايف الرسمي.` : "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع.";
   const canonicalUrl = `https://${window.location.hostname}${location.pathname}`;
 
-  // بيانات منظمة لجوجل (Schema.org)
+  // بيانات منظمة لجوجل (Schema.org) - Video & Broadcast
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "VideoObject",
@@ -405,6 +405,31 @@ export default function RealPlayer() {
       "isLiveBroadcast": true,
       "startDate": new Date().toISOString()
     }
+  };
+
+  // بيانات منظمة لمسار التنقل (Breadcrumbs)
+  const breadcrumbLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "الرئيسية",
+        "item": `https://${window.location.hostname}/`
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "بث مباشر",
+        "item": canonicalUrl
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": pageInfo?.name || "المباراة"
+      }
+    ]
   };
 
   if (fetching) {
@@ -426,8 +451,14 @@ export default function RealPlayer() {
         <meta property="og:description" content={pageDesc} />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:type" content="video.other" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={pageTitle} />
+        <meta name="twitter:description" content={pageDesc} />
         <script type="application/ld+json">
           {JSON.stringify(jsonLd)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(breadcrumbLd)}
         </script>
       </Helmet>
 
