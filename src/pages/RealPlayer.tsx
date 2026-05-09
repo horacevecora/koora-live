@@ -363,17 +363,24 @@ export default function RealPlayer() {
 
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
-      {/* شريط التحكم العلوي - تم نقله لليسار */}
+      
+      {/* زر التكبير والإعدادات على اليسار */}
       <div className="absolute top-4 left-6 md:left-24 flex items-center z-50 pointer-events-none">
         <div className="flex gap-4 items-center pointer-events-auto">
-          <button onClick={() => navigate('/')} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="الرئيسية">
-            <Home size={24} />
-          </button>
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
           </button>
           <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
             <Maximize size={28} />
+          </button>
+        </div>
+      </div>
+
+      {/* زر الرئيسية على اليمين */}
+      <div className="absolute top-4 right-6 md:right-24 flex items-center z-50 pointer-events-none">
+        <div className="flex items-center pointer-events-auto">
+          <button onClick={() => navigate('/')} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="الرئيسية">
+            <Home size={24} />
           </button>
         </div>
       </div>
