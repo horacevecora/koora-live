@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert, Info } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert, Zap } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -53,6 +53,7 @@ export default function RealPlayer() {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isMixedContent, setIsMixedContent] = useState(false);
+  const [isNativeMode, setIsNativeMode] = useState(false);
 
   useEffect(() => {
     const meta = document.createElement('meta');
@@ -127,7 +128,6 @@ export default function RealPlayer() {
       }
 
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      // تحسين التعرف على روابط Xtream Codes (نطاق/يوزر/باس/ايدي)
       const isXtream = /\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/\d+$/.test(url) || /:\d+\/.*?\/\d+$/.test(url);
       const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes(".ts") || isXtream || server.type === "ts");
 
@@ -223,14 +223,23 @@ export default function RealPlayer() {
           });
         };
 
-        if (forceNative || !mpegts.getFeatureList().mseLivePlayback) {
+        if (forceNative || isNativeMode || !mpegts.getFeatureList().mseLivePlayback) {
           video.src = url;
           attemptPlay();
           return;
         }
 
         try {
-          const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: url, cors: true });
+          const player = mpegts.createPlayer({ 
+            type: 'mpegts', 
+            isLive: true, 
+            url: url, 
+            cors: true 
+          }, {
+            enableWorker: true,
+            enableStashBuffer: false,
+            stashInitialSize: 128
+          });
           mpegtsRef.current = player;
           player.attachMediaElement(video);
           player.load();
@@ -307,7 +316,7 @@ export default function RealPlayer() {
       }
       setTimeout(() => setLoading(false), 1500);
     },
-    [destroy, hasInteracted]
+    [destroy, hasInteracted, isNativeMode]
   );
 
   useEffect(() => {
@@ -372,11 +381,22 @@ export default function RealPlayer() {
       if (servers[index]) {
         setHasInteracted(true);
         setActiveIndex(index);
+        setIsNativeMode(false); // إعادة تعيين الوضع عند تغيير السيرفر
         buildPlayer(servers[index], false, true);
       }
     },
     [buildPlayer, servers]
   );
+
+  const toggleNativeMode = () => {
+    const newMode = !isNativeMode;
+    setIsNativeMode(newMode);
+    setHasInteracted(true);
+    if (servers[activeIndex]) {
+      // نستخدم setTimeout لضمان تحديث الحالة قبل إعادة البناء
+      setTimeout(() => buildPlayer(servers[activeIndex], newMode, true), 10);
+    }
+  };
 
   const handleUnmute = () => {
     setHasInteracted(true);
@@ -400,6 +420,7 @@ export default function RealPlayer() {
   };
 
   const isCurrentFB = servers[activeIndex] && servers[activeIndex].url.includes("facebook.com");
+  const isCurrentStream = servers[activeIndex] && (servers[activeIndex].url.includes(".ts") || servers[activeIndex].url.includes("type=http") || servers[activeIndex].type === "ts");
 
   if (fetching) {
     return (
@@ -500,6 +521,25 @@ export default function RealPlayer() {
           )}
         </div>
       </article>
+
+      {/* زر تبديل الوضع للروابط المباشرة */}
+      {isCurrentStream && !loading && !error && (
+        <div className="mt-6 flex flex-col items-center gap-3">
+          <button 
+            onClick={toggleNativeMode}
+            className={cn(
+              "px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-lg",
+              isNativeMode 
+                ? "bg-emerald-600 text-white shadow-emerald-500/20" 
+                : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10"
+            )}
+          >
+            <Zap size={18} className={isNativeMode ? "fill-white" : ""} />
+            {isNativeMode ? "الوضع المباشر مفعل (لحل مشكلة الصورة)" : "تشغيل كبث مباشر (إذا ظهر الصوت فقط)"}
+          </button>
+          <p className="text-[10px] text-slate-500 font-bold">استخدم هذا الخيار إذا كنت تسمع الصوت ولا ترى الصورة في روابط TS</p>
+        </div>
+      )}
 
       <footer className="w-full max-w-[1200px] mt-12 px-4 text-center" dir="rtl">
         <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">
