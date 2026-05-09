@@ -8,12 +8,14 @@ import NotFound from "./pages/NotFound";
 import PlayerPage from "./pages/PlayerPage";
 import RealPlayer from "./pages/RealPlayer";
 import AdminPanel from "./pages/AdminPanel";
+import ExternalScripts from "./components/ExternalScripts";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
+      <ExternalScripts />
       <Toaster />
       <Sonner />
       <BrowserRouter>

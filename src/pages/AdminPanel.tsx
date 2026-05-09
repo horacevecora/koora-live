@@ -3,8 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, Settings, X, Check, RotateCcw, Lock, Layout, ExternalLink } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 
@@ -38,6 +39,9 @@ const AdminPanel = () => {
   const [newUrl, setNewUrl] = useState("");
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
 
+  // إدارة الأكواد الخارجية
+  const [externalScripts, setExternalScripts] = useState("");
+
   useEffect(() => {
     const authStatus = sessionStorage.getItem('admin_auth');
     if (authStatus === 'true') setIsAuthenticated(true);
@@ -51,11 +55,14 @@ const AdminPanel = () => {
       setPages(initialPages);
       localStorage.setItem('app_pages', JSON.stringify(initialPages));
     }
+
+    // تحميل الأكواد الخارجية
+    const savedScripts = localStorage.getItem('site_external_scripts');
+    if (savedScripts) setExternalScripts(savedScripts);
   }, []);
 
   // تحميل قنوات الصفحة النشطة
   useEffect(() => {
-    // استخدام المفتاح القديم للصفحة الرئيسية لضمان استعادة الروابط
     const storageKey = activePageSlug === 'default' ? 'player_servers' : `servers_${activePageSlug}`;
     const savedServers = localStorage.getItem(storageKey);
     if (savedServers) {
@@ -155,6 +162,12 @@ const AdminPanel = () => {
     saveServers(updated);
   };
 
+  // حفظ الأكواد الخارجية
+  const saveExternalScripts = () => {
+    localStorage.setItem('site_external_scripts', externalScripts);
+    showSuccess("تم حفظ الأكواد بنجاح. سيتم تفعيلها عند إعادة تحميل الصفحة.");
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans" dir="rtl">
@@ -241,6 +254,29 @@ const AdminPanel = () => {
                     </div>
                   ))}
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* قسم الأكواد الخارجية */}
+            <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2"><Code size={20} /> إعدادات الأكواد (Ads/SEO)</CardTitle>
+                <CardDescription className="text-slate-400">ضع هنا أكواد الإعلانات (Monetag) أو أكواد التحقق. سيتم حقنها في رأس الصفحة (Head).</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea 
+                  placeholder="ألصق الكود هنا... (مثال: <script src='...'></script>)" 
+                  value={externalScripts}
+                  onChange={(e) => setExternalScripts(e.target.value)}
+                  className="bg-slate-900 border-slate-700 min-h-[150px] font-mono text-xs"
+                  dir="ltr"
+                />
+                <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg">
+                  <p className="text-amber-400 text-[10px] font-bold">
+                    ملاحظة: حالياً يتم حفظ هذه الأكواد في متصفحك فقط. لكي تظهر لجميع الزوار، يجب ربط قاعدة بيانات (Database) بالموقع.
+                  </p>
+                </div>
+                <Button onClick={saveExternalScripts} className="w-full bg-emerald-600 hover:bg-emerald-700 font-bold">حفظ الأكواد</Button>
               </CardContent>
             </Card>
           </div>
