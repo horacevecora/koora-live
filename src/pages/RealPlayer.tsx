@@ -53,6 +53,17 @@ export default function RealPlayer() {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
+  // إضافة الميتا تاج للرأس لتعطيل المرجع (ضروري لروابط IPTV)
+  useEffect(() => {
+    const meta = document.createElement('meta');
+    meta.name = "referrer";
+    meta.content = "no-referrer";
+    document.head.appendChild(meta);
+    return () => {
+      document.head.removeChild(meta);
+    };
+  }, []);
+
   const destroy = useCallback(() => {
     if (monitorInterval.current) {
       clearInterval(monitorInterval.current);
@@ -146,6 +157,13 @@ export default function RealPlayer() {
             });
             startStallMonitor(video);
           });
+          hls.on(Hls.Events.ERROR, (event, data) => {
+            if (data.fatal) {
+              console.error("HLS Fatal Error:", data);
+              setError("فشل تحميل البث. قد يكون الرابط متوقفاً أو يحتاج لتحديث.");
+              setLoading(false);
+            }
+          });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = url;
           video.play().catch(() => {
@@ -172,6 +190,10 @@ export default function RealPlayer() {
 
         video.onwaiting = () => setLoading(true);
         video.onplaying = () => setLoading(false);
+        video.onerror = () => {
+          setError("خطأ في تشغيل الرابط المباشر.");
+          setLoading(false);
+        };
 
         const attemptPlay = () => {
           video.play().then(() => {
