@@ -142,10 +142,13 @@ export default function RealPlayer() {
       
       const url = server.url.trim();
       
+      // تحسين التعرف على روابط IPTV و TS
       const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
-      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || / \/\d+$/.test(url);
+      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || /\/\d+$/.test(url.split('?')[0]);
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS) && !url.includes("?");
+      
+      // روابط البث الخام (Raw Streams) تشمل الآن الروابط التي تحتوي على علامات استفهام إذا كانت TS
+      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS);
 
       /* 1. روابط M3U8 المباشرة */
       if (isM3U8) {
@@ -273,7 +276,7 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 3. روابط المنصات و IFRAME (الوضع الافتراضي لأي رابط آخر) */
+      /* 3. روابط المنصات و IFRAME */
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
@@ -314,7 +317,6 @@ export default function RealPlayer() {
         const ifr = container.querySelector("iframe");
         if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
-        // تشغيل أي رابط آخر كـ Iframe (مثل رابط كورة لايف)
         const ifr = document.createElement("iframe");
         ifr.src = url; 
         ifr.setAttribute("referrerpolicy", "no-referrer");
