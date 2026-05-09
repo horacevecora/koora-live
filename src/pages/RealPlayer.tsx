@@ -34,6 +34,7 @@ export default function RealPlayer() {
   const [error, setError] = useState<string | null>(null);
   const [clickCount, setClickCount] = useState(0);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
 
   /* ---- تحميل السيرفرات من localStorage ---- */
   useEffect(() => {
@@ -116,19 +117,18 @@ export default function RealPlayer() {
       
       const url = server.url.trim();
       
-      // منطق متطور للتعرف على روابط IPTV و MPEG-TS
       const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000");
       const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort;
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
       const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS;
 
-      /* 1. دعم روابط البث المباشر الخام و IPTV (TS) - الحل النهائي */
+      /* 1. دعم روابط البث المباشر الخام و IPTV (TS) */
       if (isRawStream && !isM3U8 && !url.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.muted = true;
         video.autoplay = true;
-        video.controls = true; // استخدام أدوات التحكم الأصلية للمتصفح حصراً
+        video.controls = true;
         video.className = "w-full h-full bg-black object-contain";
         video.setAttribute("crossorigin", "anonymous");
         video.setAttribute("referrerpolicy", "no-referrer");
@@ -147,24 +147,31 @@ export default function RealPlayer() {
               cors: true
             }, {
               enableWorker: true,
-              enableStashBuffer: false,
-              stashInitialSize: 128,
+              enableStashBuffer: true, // تفعيل التخزين المؤقت لزيادة الاستقرار
+              stashInitialSize: 1024, // زيادة الحجم المبدئي لتقليل التقطيع
               liveBufferLatencyChasing: true,
-              autoCleanupSourceBuffer: true
+              autoCleanupSourceBuffer: true,
+              lazyLoad: false
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
             player.load();
             
             player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
-              console.warn("MPEGTS Error, falling back to native:", type, detail);
-              video.src = url;
-              video.play().catch(() => {});
+              console.warn("MPEGTS Error:", type, detail);
+              if (retryCount < 3) {
+                setRetryCount(prev => prev + 1);
+                setTimeout(() => buildPlayer(server), 2000);
+              } else {
+                video.src = url;
+                video.play().catch(() => {});
+              }
             });
 
             Promise.resolve(player.play()).then(() => {
               if (video.muted) setShowUnmuteHint(true);
               setLoading(false);
+              setRetryCount(0);
             }).catch(() => {
               video.src = url;
               video.play().catch(() => {});
@@ -185,7 +192,6 @@ export default function RealPlayer() {
             setLoading(false);
           });
         }
-        // هام: لا يتم استدعاء Plyr هنا أبداً لتجنب خطأ NotSupportedError
         return;
       }
 
@@ -214,7 +220,11 @@ export default function RealPlayer() {
         plyrRef.current = plyr;
 
         if (Hls.isSupported()) {
-          const hls = new Hls({ xhrSetup: (xhr) => { xhr.withCredentials = false; } });
+          const hls = new Hls({ 
+            xhrSetup: (xhr) => { xhr.withCredentials = false; },
+            manifestLoadingMaxRetry: 4,
+            levelLoadingMaxRetry: 4
+          });
           hlsRef.current = hls;
           hls.loadSource(url);
           hls.attachMedia(video);
@@ -225,7 +235,15 @@ export default function RealPlayer() {
             }).catch(() => setShowUnmuteHint(true));
           });
           hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) { setError("تعذّر تشغيل البث المباشر."); setLoading(false); }
+            if (data.fatal) { 
+              if (retryCount < 3) {
+                setRetryCount(prev => prev + 1);
+                setTimeout(() => buildPlayer(server), 2000);
+              } else {
+                setError("تعذّر تشغيل البث المباشر."); 
+                setLoading(false); 
+              }
+            }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = url;
@@ -322,13 +340,14 @@ export default function RealPlayer() {
 
       setTimeout(() => setLoading(false), 1500);
     },
-    [destroy]
+    [destroy, retryCount]
   );
 
   /* ---- التبديل بين السيرفرات ---- */
   const switchServer = useCallback(
     (index: number) => {
       if (servers[index]) {
+        setRetryCount(0);
         setActiveIndex(index);
         buildPlayer(servers[index]);
       }
