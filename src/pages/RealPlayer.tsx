@@ -122,14 +122,14 @@ export default function RealPlayer() {
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
       const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS;
 
-      /* 1. دعم روابط البث المباشر الخام و IPTV (TS) */
+      /* 1. دعم روابط البث المباشر الخام و IPTV (TS) - الحل النهائي */
       if (isRawStream && !isM3U8 && !url.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.muted = true;
         video.autoplay = true;
-        video.controls = true; // تفعيل أدوات التحكم الأصلية لتجنب أخطاء Plyr
-        video.className = "w-full h-full bg-black";
+        video.controls = true; // استخدام أدوات التحكم الأصلية للمتصفح حصراً
+        video.className = "w-full h-full bg-black object-contain";
         video.setAttribute("crossorigin", "anonymous");
         video.setAttribute("referrerpolicy", "no-referrer");
         container.appendChild(video);
@@ -185,7 +185,7 @@ export default function RealPlayer() {
             setLoading(false);
           });
         }
-        // ملاحظة: لم نقم بربط Plyr هنا لتجنب خطأ NotSupportedError
+        // هام: لا يتم استدعاء Plyr هنا أبداً لتجنب خطأ NotSupportedError
         return;
       }
 
