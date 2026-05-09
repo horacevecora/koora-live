@@ -297,9 +297,9 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       } else if (isFB) {
         const ifr = document.createElement("iframe");
-        // استخدام mute=false لفيسبوك لضمان محاولة تشغيل الصوت
-        const fbMute = shouldUnmute ? "false" : "true";
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=${fbMute}&allowfullscreen=true&adapt_to_wrapper=true`;
+        // استخدام mute=0 و autoplay=true لضمان أفضل توافق مع فيسبوك
+        const fbMute = shouldUnmute ? "0" : "1";
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=true&mute=${fbMute}&allowfullscreen=true&adapt_to_wrapper=true`;
         ifr.style.width = "100%"; 
         ifr.style.height = "100%"; 
         ifr.style.border = "none";
