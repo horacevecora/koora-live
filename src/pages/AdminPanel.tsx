@@ -418,7 +418,16 @@ const AdminPanel = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية</h1>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-center">
+            <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10">
+              <Download size={16} /> تصدير
+            </Button>
+            <div className="relative">
+              <input type="file" accept=".json" onChange={importBackup} className="absolute inset-0 opacity-0 cursor-pointer" />
+              <Button variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10">
+                <Upload size={16} /> استيراد
+              </Button>
+            </div>
             <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10">
               <Home size={16} /> الرئيسية
             </Button>
@@ -462,24 +471,6 @@ const AdminPanel = () => {
                       </Button>
                     </div>
                   ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Backup Section */}
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-              <CardHeader>
-                <CardTitle className="text-lg font-bold flex items-center gap-2">النسخ الاحتياطي</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2">
-                <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-xs h-12 gap-2">
-                  <Download size={16} /> تصدير
-                </Button>
-                <div className="relative">
-                  <input type="file" accept=".json" onChange={importBackup} className="absolute inset-0 opacity-0 cursor-pointer" />
-                  <Button variant="outline" className="w-full bg-slate-900/50 border-slate-800 text-xs h-12 gap-2">
-                    <Upload size={16} /> استيراد
-                  </Button>
                 </div>
               </CardContent>
             </Card>
