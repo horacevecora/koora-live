@@ -384,6 +384,12 @@ export default function RealPlayer() {
   const pageDesc = pageInfo ? `شاهد ${pageInfo.name} بث مباشر بدون تقطيع بجودة عالية على كورة لايف الرسمي.` : "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع.";
   const canonicalUrl = `https://${window.location.hostname}${location.pathname}`;
 
+  const seoKeywords = [
+    "كورة لايف", "بث مباشر", "مباريات اليوم", "يلا شوت", "كورة اون لاين", 
+    "بين سبورت", "الاسطورة", "كورة ستار", "يلا كورة", "ماي كورة", 
+    "بث مباريات", "koora live", "yalla shoot", "live matches", "kora online"
+  ];
+
   if (fetching) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white">
@@ -463,6 +469,20 @@ export default function RealPlayer() {
           )}
         </div>
       </article>
+
+      {/* قسم الكلمات المفتاحية للـ SEO في الأسفل */}
+      <footer className="w-full max-w-[1200px] mt-12 px-4 text-center" dir="rtl">
+        <div className="flex flex-wrap justify-center gap-x-4 gap-y-2 opacity-30 hover:opacity-60 transition-opacity duration-500">
+          {seoKeywords.map((keyword, idx) => (
+            <span key={idx} className="text-[9px] md:text-[10px] text-slate-400 font-medium cursor-default">
+              {keyword}
+            </span>
+          ))}
+        </div>
+        <p className="mt-4 text-[8px] text-slate-600 font-bold uppercase tracking-widest">
+          Koora Live Streaming Service - All Rights Reserved © 2026
+        </p>
+      </footer>
 
       <style>{`
         :root { --plyr-color-main: #6366f1; }
