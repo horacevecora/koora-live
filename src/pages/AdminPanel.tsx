@@ -458,17 +458,16 @@ const AdminPanel = () => {
                 <div className="space-y-2 pt-4">
                   {pages.map(p => (
                     <div key={p.id} className="flex flex-col gap-1">
-                      <Button 
+                      <div 
                         onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} 
-                        variant={activePageId === p.id ? "default" : "outline"}
-                        className={`w-full justify-between h-12 font-bold ${activePageId === p.id ? 'bg-indigo-600' : 'bg-slate-900/50 border-slate-800 text-slate-300'}`}
+                        className={`w-full flex items-center justify-between px-4 h-12 font-bold rounded-md cursor-pointer transition-colors ${activePageId === p.id ? 'bg-indigo-600 text-white' : 'bg-slate-900/50 border border-slate-800 text-slate-300 hover:bg-slate-800'}`}
                       >
                         <div className="flex items-center gap-2">
-                          <button onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} className="p-1 hover:text-white"><ExternalLink size={14} /></button>
-                          {p.slug !== 'default' && <button onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} className="p-1 hover:text-red-400"><Trash2 size={14} /></button>}
+                          <div onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} className="p-1 hover:text-white" role="button"><ExternalLink size={14} /></div>
+                          {p.slug !== 'default' && <div onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} className="p-1 hover:text-red-400" role="button"><Trash2 size={14} /></div>}
                         </div>
                         <span>{p.name}</span>
-                      </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
