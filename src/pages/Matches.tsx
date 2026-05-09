@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { Info, HelpCircle, ChevronLeft, Home, Tv, Hash } from "lucide-react";
+import { Info, HelpCircle, ChevronLeft, Home, Tv, Hash, ChevronRight } from "lucide-react";
 import { useNavigate, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -60,7 +60,15 @@ const Matches = () => {
         </button>
       </header>
 
-      <main className="flex-grow max-w-[1200px] mx-auto w-full px-6 py-10">
+      <main className="flex-grow max-w-[1200px] mx-auto w-full px-6 py-6">
+        
+        {/* مسار التنقل (Breadcrumbs) */}
+        <nav className="flex items-center gap-2 text-[10px] font-bold text-slate-500 mb-8 bg-white/5 w-fit px-4 py-2 rounded-full border border-white/5">
+          <Link to="/" className="hover:text-[#00e676] transition-colors">الرئيسية</Link>
+          <ChevronLeft size={12} />
+          <span className="text-slate-300">جدول المباريات</span>
+        </nav>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
           
           {/* قسم المحتوى النصي والأسئلة */}
@@ -124,7 +132,7 @@ const Matches = () => {
             <div className="sticky top-24">
               <h2 className="text-2xl font-black text-white mb-6 flex items-center gap-3">
                 <div className="w-2 h-8 bg-[#00e676] rounded-full" />
-                مباريات أخرى
+                مباريات جارية
               </h2>
               <div className="flex flex-col gap-4">
                 {otherPages.length > 0 ? (
