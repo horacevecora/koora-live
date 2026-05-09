@@ -289,13 +289,12 @@ export default function RealPlayer() {
         container.appendChild(ifr);
         setTimeout(() => setShowUnmuteHint(true), 2000);
       } else if (ytId) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "youtube-crop-wrapper";
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=${shouldUnmute ? "0" : "1"}&controls=1`;
+        const origin = window.location.origin;
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=${shouldUnmute ? "0" : "1"}&controls=1&origin=${encodeURIComponent(origin)}`;
+        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
         ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
-        wrapper.appendChild(ifr);
-        container.appendChild(wrapper);
+        container.appendChild(ifr);
       } else if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
         const ifr = container.querySelector("iframe");
@@ -553,8 +552,6 @@ export default function RealPlayer() {
         .live-video-element::-webkit-media-controls-time-remaining-display { display: none !important; }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
         #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
-        .youtube-crop-wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
-        .youtube-crop-wrapper iframe { position: absolute; width: 120%; height: 120%; top: -10%; left: -10%; border: none; }
       `}</style>
     </div>
   );
