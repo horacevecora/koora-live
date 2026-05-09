@@ -131,16 +131,21 @@ export default function RealPlayer() {
         video.muted = true;
         video.autoplay = true;
         video.controls = true;
-        video.className = "w-full h-full bg-black object-contain";
+        video.className = "w-full h-full bg-black object-contain live-video-element";
         video.setAttribute("crossorigin", "anonymous");
         video.setAttribute("referrerpolicy", "no-referrer");
         container.appendChild(video);
 
+        // مراقبة حالة التوقف (Stall) لاستئناف البث
+        video.onwaiting = () => {
+          if (video.readyState < 3) setLoading(true);
+        };
+        video.onplaying = () => setLoading(false);
+        
         video.onvolumechange = () => {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        // إذا طلبنا التشغيل الأصلي (Native) أو كان المتصفح لا يدعم MSE
         if (forceNative || !mpegts.getFeatureList().mseLivePlayback) {
           video.src = url;
           video.play().then(() => {
@@ -163,8 +168,9 @@ export default function RealPlayer() {
             }, {
               enableWorker: true,
               enableStashBuffer: true,
-              stashInitialSize: 1024,
+              stashInitialSize: 3072, // زيادة حجم التخزين المؤقت لتقليل التقطيع
               liveBufferLatencyChasing: true,
+              liveBufferLatencyMaxLatency: 3,
               autoCleanupSourceBuffer: true,
               lazyLoad: false
             });
@@ -173,30 +179,21 @@ export default function RealPlayer() {
             player.load();
             
             player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
-              console.warn("MPEGTS Error:", type, detail);
-              
-              // إذا كان الخطأ بسبب الكوديك، نحاول التشغيل الأصلي فوراً
               if (detail === mpegts.ErrorDetails.MEDIA_MSE_ERROR || type.includes('unsupported')) {
-                console.log("Codec unsupported in MSE, trying Native fallback...");
                 setIsCodecUnsupported(true);
-                buildPlayer(server, true); // إعادة المحاولة بنظام Native
+                buildPlayer(server, true);
                 return;
               }
-
               if (retryCount < 2) {
                 setRetryCount(prev => prev + 1);
                 setTimeout(() => buildPlayer(server), 3000);
-              } else {
-                buildPlayer(server, true); // الفشل النهائي يحولنا لـ Native
               }
             });
 
             Promise.resolve(player.play()).then(() => {
               if (video.muted) setShowUnmuteHint(true);
               setLoading(false);
-              setRetryCount(0);
             }).catch((e) => {
-              console.error("Play failed, trying Native:", e);
               if (e.name !== 'AbortError') buildPlayer(server, true);
             });
           } catch (e) {
@@ -230,7 +227,7 @@ export default function RealPlayer() {
         };
 
         const plyr = new Plyr(video, {
-          controls: ["play-large", "play", "progress", "current-time", "mute", "volume", "settings", "pip", "fullscreen"],
+          controls: ["play-large", "play", "mute", "volume", "settings", "pip", "fullscreen"], // إزالة شريط التقدم
           settings: ["quality", "speed"],
           ratio: "16:9",
           autoplay: true,
@@ -243,7 +240,9 @@ export default function RealPlayer() {
           const hls = new Hls({ 
             xhrSetup: (xhr) => { xhr.withCredentials = false; },
             manifestLoadingMaxRetry: 4,
-            levelLoadingMaxRetry: 4
+            levelLoadingMaxRetry: 4,
+            liveSyncDurationCount: 3,
+            liveMaxLatencyDurationCount: 10
           });
           hlsRef.current = hls;
           hls.loadSource(url);
@@ -254,17 +253,6 @@ export default function RealPlayer() {
               if (video.muted) setShowUnmuteHint(true);
             }).catch(() => setShowUnmuteHint(true));
           });
-          hls.on(Hls.Events.ERROR, (_, data) => {
-            if (data.fatal) { 
-              if (retryCount < 2) {
-                setRetryCount(prev => prev + 1);
-                setTimeout(() => buildPlayer(server), 3000);
-              } else {
-                setError("تعذّر تشغيل البث المباشر."); 
-                setLoading(false); 
-              }
-            }
-          });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
           video.src = url;
           video.addEventListener("loadedmetadata", () => {
@@ -273,92 +261,58 @@ export default function RealPlayer() {
               if (video.muted) setShowUnmuteHint(true);
             }).catch(() => setShowUnmuteHint(true));
           });
-        } else {
-          setError("المتصفح لا يدعم تشغيل هذا النوع من الروابط.");
-          setLoading(false);
         }
         return;
       }
 
-      /* 3. روابط المنصات */
+      /* 3. روابط المنصات و IFRAME */
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
       const isFB = isFacebookUrl(url);
 
-      if (kickInfo) {
-        const ifr = document.createElement("iframe");
-        const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
-        ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=false`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allow = "autoplay; fullscreen";
-        ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-        setLoading(false);
-        return;
-      }
-
-      if (twitchChannel) {
-        const ifr = document.createElement("iframe");
-        const domain = window.location.hostname;
-        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${domain}&autoplay=true&muted=false`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.allow = "autoplay; fullscreen";
-        ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-        setLoading(false);
-        return;
-      }
-
-      if (isFB) {
-        const ifr = document.createElement("iframe");
-        const encodedUrl = encodeURIComponent(url);
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=0&allowfullscreen=true`;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        ifr.setAttribute("allowFullScreen", "true");
-        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
-        container.appendChild(ifr);
+      if (kickInfo || twitchChannel || isFB || ytId || url.includes("<iframe")) {
+        if (kickInfo) {
+          const ifr = document.createElement("iframe");
+          const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
+          ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=false`;
+          ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
+          ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+          container.appendChild(ifr);
+        } else if (twitchChannel) {
+          const ifr = document.createElement("iframe");
+          ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${window.location.hostname}&autoplay=true&muted=false`;
+          ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
+          ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+          container.appendChild(ifr);
+        } else if (isFB) {
+          const ifr = document.createElement("iframe");
+          ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=0&allowfullscreen=true`;
+          ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
+          ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+          container.appendChild(ifr);
+        } else if (ytId) {
+          const wrapper = document.createElement("div");
+          wrapper.className = "youtube-crop-wrapper";
+          const ifr = document.createElement("iframe");
+          ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=0&controls=1`;
+          ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+          wrapper.appendChild(ifr);
+          container.appendChild(wrapper);
+        } else if (url.includes("<iframe")) {
+          container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
+          const ifr = container.querySelector("iframe");
+          if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
+        } else {
+          const ifr = document.createElement("iframe");
+          ifr.src = url; ifr.setAttribute("referrerpolicy", "no-referrer");
+          ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+          ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
+          container.appendChild(ifr);
+        }
         setTimeout(() => setLoading(false), 1500);
         return;
       }
-
-      if (ytId) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "youtube-crop-wrapper";
-        const ifr = document.createElement("iframe");
-        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&mute=0&iv_load_policy=3&controls=1`;
-        ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen";
-        ifr.allowFullscreen = true;
-        wrapper.appendChild(ifr);
-        container.appendChild(wrapper);
-        setTimeout(() => setLoading(false), 1000);
-        return;
-      }
-
-      /* 4. IFRAME عام */
-      if (url.includes("<iframe")) {
-        container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
-        const ifr = container.querySelector("iframe");
-        if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
-      } else {
-        const ifr = document.createElement("iframe");
-        ifr.src = url;
-        ifr.setAttribute("referrerpolicy", "no-referrer");
-        ifr.allow = "autoplay; fullscreen";
-        ifr.allowFullscreen = true;
-        ifr.style.width = "100%";
-        ifr.style.height = "100%";
-        ifr.style.border = "none";
-        container.appendChild(ifr);
-      }
-
-      setTimeout(() => setLoading(false), 1500);
     },
     [destroy, retryCount]
   );
@@ -475,12 +429,6 @@ export default function RealPlayer() {
                   <RefreshCw size={18} /> إعادة المحاولة
                 </button>
               )}
-              {isCodecUnsupported && (
-                <div className="space-y-2">
-                  <p className="text-slate-500 text-xs">يرجى تجربة متصفح Edge أو Safari لدعم كوديك H.265</p>
-                  <button onClick={() => buildPlayer(servers[activeIndex], true)} className="text-indigo-400 underline text-sm">محاولة التشغيل المباشر (Native)</button>
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -496,6 +444,12 @@ export default function RealPlayer() {
       <style>{`
         :root { --plyr-color-main: #6366f1; }
         .plyr { width: 100%; height: 100%; }
+        /* إخفاء شريط التقدم والوقت في البث المباشر */
+        .live-video-element::-webkit-media-controls-timeline,
+        .live-video-element::-webkit-media-controls-current-time-display,
+        .live-video-element::-webkit-media-controls-time-remaining-display {
+          display: none !important;
+        }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
         #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
         
@@ -513,9 +467,6 @@ export default function RealPlayer() {
           top: -10%;
           left: -10%;
           border: none;
-        }
-        video::-webkit-media-controls-panel {
-          background-image: linear-gradient(transparent, rgba(0,0,0,0.5)) !important;
         }
       `}</style>
     </div>
