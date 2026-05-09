@@ -46,8 +46,8 @@ const AdminPanel = () => {
   const [externalScripts, setExternalScripts] = useState("");
   const [bulkInput, setBulkInput] = useState("");
 
-  // الكود السري الافتراضي (يمكنك تغييره هنا)
-  const SECRET_CODE = "2026"; 
+  // الكود السري الافتراضي الجديد
+  const SECRET_CODE = "simo"; 
 
   useEffect(() => {
     const savedAuth = localStorage.getItem('admin_unlocked');
