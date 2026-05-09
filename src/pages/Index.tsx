@@ -59,20 +59,28 @@ const Index = () => {
         <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/5" />
       </div>
 
-      {/* الشعار الاحترافي (Logo) */}
-      <div className="absolute top-24 left-8 md:left-20 z-20 hidden lg:block">
-        <div className="relative group cursor-pointer" onClick={() => navigate('/real.html')}>
-          <div className="absolute inset-0 bg-[#00e676] blur-[60px] opacity-20 rounded-full" />
-          <img 
-            src="/favicon.svg" 
-            alt="Koora Live Pro Logo" 
-            className="w-48 h-48 md:w-56 md:h-56 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)] relative z-10 transition-transform duration-300 hover:scale-105"
-          />
-        </div>
-      </div>
-
       {/* الشريط العلوي */}
-      <header className="relative z-10 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-md border-b border-white/5">
+      <header className="relative z-50 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-md border-b border-white/5">
+        <div className="flex flex-col items-start">
+          <div className="flex items-center gap-1 text-[#00e676] font-black text-2xl italic tracking-tighter leading-none">
+            <span>Koora</span>
+            <span className="text-white">Live</span>
+          </div>
+          <span className="text-[10px] text-slate-400 font-bold mt-1">كورة أون لاين | ماتش لايف</span>
+          
+          {/* الشعار الاحترافي (Logo) - تم نقله ليكون أسفل النص مباشرة */}
+          <div className="mt-4 hidden lg:block">
+            <div className="relative group cursor-pointer" onClick={() => navigate('/real.html')}>
+              <div className="absolute inset-0 bg-[#00e676] blur-[40px] opacity-10 rounded-full" />
+              <img 
+                src="/favicon.svg" 
+                alt="Koora Live Pro Logo" 
+                className="w-32 h-32 md:w-40 md:h-40 drop-shadow-[0_10px_20px_rgba(0,0,0,0.5)] relative z-10 transition-transform duration-300 hover:scale-105"
+              />
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate('/matches')}
@@ -82,18 +90,10 @@ const Index = () => {
             <span>جدول المباريات</span>
           </button>
         </div>
-
-        <div className="flex flex-col items-end">
-          <div className="flex items-center gap-1 text-[#00e676] font-black text-2xl italic tracking-tighter leading-none">
-            <span>Koora</span>
-            <span className="text-white">Live</span>
-          </div>
-          <span className="text-[10px] text-slate-400 font-bold mt-1">كورة أون لاين | ماتش لايف</span>
-        </div>
       </header>
 
       {/* قسم الهيرو (Hero Section) */}
-      <main className="relative z-10 flex flex-col items-center justify-center px-4 py-20 text-center min-h-[80vh]">
+      <main className="relative z-10 flex flex-col items-center justify-center px-4 py-20 text-center min-h-[70vh]">
         <div className="space-y-1 mb-6">
           <h1 className="text-5xl md:text-8xl font-black text-white tracking-tighter drop-shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
             كورة لايف الرسمي
