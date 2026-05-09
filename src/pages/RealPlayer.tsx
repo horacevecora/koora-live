@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight, Loader2, Home } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -364,7 +364,7 @@ export default function RealPlayer() {
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       
-      {/* جهة اليسار: الزر الخفي في أقصى الزاوية ثم زر التكبير */}
+      {/* جهة اليسار: الزر الخفي في أقصى الزاوية ثم زر التكبير بجانبه */}
       <div className="absolute top-4 left-4 flex items-center z-50 pointer-events-none">
         <div className="flex gap-4 items-center pointer-events-auto">
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
