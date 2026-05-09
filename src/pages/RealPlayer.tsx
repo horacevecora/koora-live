@@ -8,14 +8,14 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight, Loader2 } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
-
-/* ──────────────── النوعيات ──────────────── */
+import { supabase } from "@/integrations/supabase/client";
 
 type ServerType = "iframe" | "m3u8" | "ts" | "youtube" | "facebook" | "twitch" | "kick" | "raw";
 
 interface Server {
+  id?: string;
   name: string;
   url: string;
   type: ServerType;
@@ -26,9 +26,7 @@ export default function RealPlayer() {
   const { slug } = useParams();
   const location = useLocation();
   
-  // تحديد مفتاح التخزين: إذا كانت الصفحة الرئيسية نستخدم المفتاح القديم لضمان استعادة البيانات
-  const pageKey = slug || (location.pathname === '/real.html' ? 'default' : 'unknown');
-  const storageKey = pageKey === 'default' ? 'player_servers' : `servers_${pageKey}`;
+  const pageSlug = slug || (location.pathname === '/real.html' ? 'default' : 'unknown');
 
   const containerRef = useRef<HTMLDivElement>(null);
   const plyrRef = useRef<Plyr | null>(null);
@@ -40,40 +38,63 @@ export default function RealPlayer() {
   const [servers, setServers] = useState<Server[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clickCount, setClickCount] = useState(0);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  /* ---- تحميل السيرفرات بناءً على الصفحة الحالية ---- */
   useEffect(() => {
-    const saved = localStorage.getItem(storageKey);
-    if (saved) {
-      const parsed = JSON.parse(saved);
-      setServers(parsed);
-      if (parsed.length > 0) {
-        buildPlayer(parsed[0], false, false);
-      }
-    } else {
-      // سيرفر افتراضي إذا كانت الصفحة فارغة تماماً
-      const defaultServers: Server[] = [
-        {
-          name: "سيرفر 1 – beIN HD1",
-          url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1",
-          type: "iframe",
+    const loadData = async () => {
+      setFetching(true);
+      try {
+        // 1. جلب الصفحة بناءً على الـ slug
+        const { data: pageData, error: pageError } = await supabase
+          .from('pages')
+          .select('id')
+          .eq('slug', pageSlug)
+          .single();
+
+        if (pageError || !pageData) {
+          if (pageSlug === 'default') {
+            // إذا كانت الصفحة الرئيسية غير موجودة، نستخدم سيرفر افتراضي
+            const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
+            setServers(def);
+            buildPlayer(def[0], false, false);
+          } else {
+            setError("الصفحة غير موجودة");
+          }
+          return;
         }
-      ];
-      setServers(defaultServers);
-      buildPlayer(defaultServers[0], false, false);
-    }
 
-    return () => {
-      destroy();
+        // 2. جلب القنوات لهذه الصفحة
+        const { data: serversData, error: serversError } = await supabase
+          .from('servers')
+          .select('*')
+          .eq('page_id', pageData.id)
+          .order('sort_order', { ascending: true });
+
+        if (serversError) throw serversError;
+
+        if (serversData && serversData.length > 0) {
+          setServers(serversData);
+          buildPlayer(serversData[0], false, false);
+        } else {
+          setError("لا توجد قنوات مضافة لهذه الصفحة");
+        }
+      } catch (err) {
+        console.error("Error loading player data:", err);
+        setError("فشل الاتصال بقاعدة البيانات");
+      } finally {
+        setFetching(false);
+      }
     };
-  }, [storageKey]);
 
-  /* ---- تنظيف المشغّل القديم ---- */
+    loadData();
+    return () => destroy();
+  }, [pageSlug]);
+
   const destroy = useCallback(() => {
     if (monitorInterval.current) {
       clearInterval(monitorInterval.current);
@@ -93,10 +114,8 @@ export default function RealPlayer() {
     }
   }, []);
 
-  /* ---- نظام المراقب الذكي لمنع التجمد ---- */
   const startStallMonitor = (video: HTMLVideoElement) => {
     if (monitorInterval.current) clearInterval(monitorInterval.current);
-    
     monitorInterval.current = setInterval(() => {
       if (!video.paused && video.readyState >= 2) {
         if (video.currentTime === lastTime.current) {
@@ -110,7 +129,6 @@ export default function RealPlayer() {
     }, 2000);
   };
 
-  /* ---- استخراج المعرفات من الروابط ---- */
   const getYouTubeId = (url: string) => {
     const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
     const match = url.match(regExp);
@@ -131,11 +149,8 @@ export default function RealPlayer() {
     return null;
   };
 
-  const isFacebookUrl = (url: string) => {
-    return url.includes("facebook.com") || url.includes("fb.watch");
-  };
+  const isFacebookUrl = (url: string) => url.includes("facebook.com") || url.includes("fb.watch");
 
-  /* ---- بناء المشغّل حسب نوع السيرفر ---- */
   const buildPlayer = useCallback(
     (server: Server, forceNative = false, shouldUnmute = hasInteracted) => {
       const container = containerRef.current;
@@ -149,13 +164,11 @@ export default function RealPlayer() {
       setIsCodecUnsupported(false);
       
       const url = server.url.trim();
-      
       const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
       const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || /\/\d+$/.test(url.split('?')[0]);
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
       const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS);
 
-      /* 1. روابط M3U8 المباشرة */
       if (isM3U8) {
         const video = document.createElement("video");
         video.playsInline = true;
@@ -172,43 +185,39 @@ export default function RealPlayer() {
         });
         plyrRef.current = plyr;
 
-        const startHls = () => {
-          if (Hls.isSupported()) {
-            const hls = new Hls({ 
-              xhrSetup: (xhr) => { xhr.withCredentials = false; },
-              liveSyncDurationCount: 8,
-              liveMaxLatencyDurationCount: 20,
-              maxBufferLength: 60,
-              enableWorker: true
-            });
-            hlsRef.current = hls;
-            hls.loadSource(url);
-            hls.attachMedia(video);
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-              setLoading(false);
-              video.play().catch(() => {
-                video.muted = true;
-                video.play();
-                setShowUnmuteHint(true);
-              });
-              startStallMonitor(video);
-            });
-          } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-            video.src = url;
+        if (Hls.isSupported()) {
+          const hls = new Hls({ 
+            xhrSetup: (xhr) => { xhr.withCredentials = false; },
+            liveSyncDurationCount: 8,
+            liveMaxLatencyDurationCount: 20,
+            maxBufferLength: 60,
+            enableWorker: true
+          });
+          hlsRef.current = hls;
+          hls.loadSource(url);
+          hls.attachMedia(video);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setLoading(false);
             video.play().catch(() => {
               video.muted = true;
               video.play();
               setShowUnmuteHint(true);
             });
-            setLoading(false);
             startStallMonitor(video);
-          }
-        };
-        startHls();
+          });
+        } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+          video.src = url;
+          video.play().catch(() => {
+            video.muted = true;
+            video.play();
+            setShowUnmuteHint(true);
+          });
+          setLoading(false);
+          startStallMonitor(video);
+        }
         return;
       }
 
-      /* 2. دعم روابط البث المباشر الخام و IPTV (TS) */
       if (isRawStream && !url.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
@@ -246,30 +255,16 @@ export default function RealPlayer() {
 
         if (isTS) {
           try {
-            const player = mpegts.createPlayer({ 
-              type: 'mpegts', isLive: true, url: url, cors: true
-            }, {
-              enableWorker: true, 
-              enableStashBuffer: true, 
-              stashInitialSize: 1024 * 1024 * 2,
-              liveBufferLatencyChasing: true, 
-              liveBufferLatencyMaxLatency: 15,
-              autoCleanupSourceBuffer: true, 
-              lazyLoad: false,
-              statisticsInfoReportInterval: 1000
-            });
+            const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: url, cors: true });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
             player.load();
-            
             player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
               if (detail === mpegts.ErrorDetails.MEDIA_MSE_ERROR || type.includes('unsupported')) {
                 setIsCodecUnsupported(true);
                 buildPlayer(server, true, shouldUnmute);
-                return;
               }
             });
-
             attemptPlay();
           } catch (e) {
             buildPlayer(server, true, shouldUnmute);
@@ -281,14 +276,10 @@ export default function RealPlayer() {
         return;
       }
 
-      /* 3. روابط المنصات و IFRAME */
       const ytId = getYouTubeId(url);
       const twitchChannel = getTwitchChannel(url);
       const kickInfo = getKickInfo(url);
       const isFB = isFacebookUrl(url);
-
-      const muteParam = shouldUnmute ? "0" : "1";
-      const autoParam = "1";
 
       if (kickInfo) {
         const ifr = document.createElement("iframe");
@@ -305,24 +296,16 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       } else if (isFB) {
         const ifr = document.createElement("iframe");
-        const fbMute = shouldUnmute ? "0" : "1";
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=true&mute=${fbMute}&allowfullscreen=true&adapt_to_wrapper=true`;
-        ifr.style.width = "100%"; 
-        ifr.style.height = "100%"; 
-        ifr.style.border = "none";
-        ifr.style.position = "absolute";
-        ifr.style.top = "0";
-        ifr.style.left = "0";
-        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"; 
-        ifr.allowFullscreen = true;
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=true&mute=${shouldUnmute ? "0" : "1"}&allowfullscreen=true&adapt_to_wrapper=true`;
+        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; ifr.style.position = "absolute"; ifr.style.top = "0"; ifr.style.left = "0";
+        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"; ifr.allowFullscreen = true;
         container.appendChild(ifr);
-        // إظهار تنبيه الصوت لفيسبوك بعد قليل من التحميل
         setTimeout(() => setShowUnmuteHint(true), 2000);
       } else if (ytId) {
         const wrapper = document.createElement("div");
         wrapper.className = "youtube-crop-wrapper";
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=${muteParam}&controls=1`;
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=${shouldUnmute ? "0" : "1"}&controls=1`;
         ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
         wrapper.appendChild(ifr);
         container.appendChild(wrapper);
@@ -332,22 +315,15 @@ export default function RealPlayer() {
         if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
         const ifr = document.createElement("iframe");
-        ifr.src = url; 
-        ifr.setAttribute("referrerpolicy", "no-referrer");
-        ifr.allow = "autoplay; fullscreen"; 
-        ifr.allowFullscreen = true;
-        ifr.style.width = "100%"; 
-        ifr.style.height = "100%"; 
-        ifr.style.border = "none";
+        ifr.src = url; ifr.setAttribute("referrerpolicy", "no-referrer"); ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
         container.appendChild(ifr);
       }
-      
       setTimeout(() => setLoading(false), 1500);
     },
     [destroy, hasInteracted]
   );
 
-  /* ---- التبديل بين السيرفرات ---- */
   const switchServer = useCallback(
     (index: number) => {
       if (servers[index]) {
@@ -362,33 +338,34 @@ export default function RealPlayer() {
   const handleUnmute = () => {
     setHasInteracted(true);
     const video = containerRef.current?.querySelector('video');
-    if (video) {
-      video.muted = false;
-      video.volume = 1;
-      video.play().catch(() => {});
-    }
-    if (plyrRef.current) {
-      plyrRef.current.muted = false;
-      plyrRef.current.volume = 1;
-      plyrRef.current.play();
-    }
+    if (video) { video.muted = false; video.volume = 1; video.play().catch(() => {}); }
+    if (plyrRef.current) { plyrRef.current.muted = false; plyrRef.current.volume = 1; plyrRef.current.play(); }
     setShowUnmuteHint(false);
   };
 
   const handleSettingsClick = () => {
     const newCount = clickCount + 1;
-    if (newCount >= 3) { navigate('/admin'); } 
+    if (newCount >= 3) navigate('/admin');
     else { setClickCount(newCount); setTimeout(() => setClickCount(0), 2000); }
   };
 
   const toggleFullScreen = () => {
     const elem = document.getElementById('main-player-wrapper');
     if (!elem) return;
-    if (!document.fullscreenElement) { elem.requestFullscreen().catch(() => {}); } 
-    else { document.exitFullscreen(); }
+    if (!document.fullscreenElement) elem.requestFullscreen().catch(() => {});
+    else document.exitFullscreen();
   };
 
   const isCurrentFB = servers[activeIndex] && isFacebookUrl(servers[activeIndex].url);
+
+  if (fetching) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white">
+        <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
+        <p className="font-bold">جارٍ الاتصال بقاعدة البيانات...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
@@ -403,10 +380,7 @@ export default function RealPlayer() {
         </div>
       </div>
 
-      <div 
-        id="main-player-wrapper" 
-        className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]"
-      >
+      <div id="main-player-wrapper" className="w-full max-w-[1200px] rounded-2xl mt-4 bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]">
         <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5 rounded-t-2xl overflow-hidden" dir="rtl">
           {servers.map((srv, i) => (
             <button
@@ -428,54 +402,38 @@ export default function RealPlayer() {
           ))}
         </nav>
 
-        <div 
-          className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden"
-          onClick={handleUnmute}
-        >
+        <div className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden" onClick={handleUnmute}>
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
-          
           {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
               <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ استقرار البث...</p>
             </div>
           )}
-
-          {/* تنبيه الصوت العام */}
           {showUnmuteHint && !loading && !isCurrentFB && (
-            <div 
-              className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors"
-              onClick={(e) => { e.stopPropagation(); handleUnmute(); }}
-            >
+            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors" onClick={(e) => { e.stopPropagation(); handleUnmute(); }}>
               <Volume2 size={20} />
               <span className="font-black text-sm">انقر لتشغيل الصوت</span>
             </div>
           )}
-
-          {/* تنبيه الصوت المخصص لفيسبوك */}
           {showUnmuteHint && !loading && isCurrentFB && (
             <div className="absolute bottom-12 right-4 z-30 flex flex-col items-end pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 mb-1 border border-white/20">
                 <Volume2 size={16} className="animate-pulse" />
                 <span className="font-black text-[11px] whitespace-nowrap">شغل الصوت من هنا</span>
               </div>
-              <div className="mr-4 text-indigo-500 animate-bounce">
-                <ArrowDownRight size={24} />
-              </div>
+              <div className="mr-4 text-indigo-500 animate-bounce"><ArrowDownRight size={24} /></div>
             </div>
           )}
-
           {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
               <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 mb-4">
                 <AlertTriangle className="text-red-500 mx-auto mb-2" size={32} />
                 <p className="text-red-400 font-black text-sm">{error}</p>
               </div>
-              {!isCodecUnsupported && (
-                <button onClick={() => switchServer(activeIndex)} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 mx-auto">
-                  <RefreshCw size={18} /> إعادة المحاولة
-                </button>
-              )}
+              <button onClick={() => window.location.reload()} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 mx-auto">
+                <RefreshCw size={18} /> إعادة المحاولة
+              </button>
             </div>
           )}
         </div>
@@ -493,27 +451,11 @@ export default function RealPlayer() {
         .plyr { width: 100%; height: 100%; }
         .live-video-element::-webkit-media-controls-timeline,
         .live-video-element::-webkit-media-controls-current-time-display,
-        .live-video-element::-webkit-media-controls-time-remaining-display {
-          display: none !important;
-        }
+        .live-video-element::-webkit-media-controls-time-remaining-display { display: none !important; }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
         #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
-        
-        .youtube-crop-wrapper {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          overflow: hidden;
-          background: #000;
-        }
-        .youtube-crop-wrapper iframe {
-          position: absolute;
-          width: 120%;
-          height: 120%;
-          top: -10%;
-          left: -10%;
-          border: none;
-        }
+        .youtube-crop-wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
+        .youtube-crop-wrapper iframe { position: absolute; width: 120%; height: 120%; top: -10%; left: -10%; border: none; }
       `}</style>
     </div>
   );

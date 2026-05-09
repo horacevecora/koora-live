@@ -1,48 +1,49 @@
 "use client";
 
 import { useEffect } from 'react';
+import { supabase } from "@/integrations/supabase/client";
 
 const ExternalScripts = () => {
   useEffect(() => {
-    // تحميل الأكواد من التخزين
-    const savedScripts = localStorage.getItem('site_external_scripts');
-    if (!savedScripts) return;
+    const loadScripts = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('site_settings')
+          .select('value')
+          .eq('key', 'external_scripts')
+          .single();
 
-    try {
-      // إنشاء حاوية مؤقتة لتحليل الأكواد
-      const container = document.createElement('div');
-      container.innerHTML = savedScripts;
+        if (error || !data?.value) return;
 
-      // استخراج وحقن جميع السكربتات
-      const scripts = container.querySelectorAll('script');
-      scripts.forEach((oldScript) => {
-        const newScript = document.createElement('script');
-        
-        // نسخ جميع الخصائص (src, async, defer, etc.)
-        Array.from(oldScript.attributes).forEach((attr) => {
-          newScript.setAttribute(attr.name, attr.value);
+        const container = document.createElement('div');
+        container.innerHTML = data.value;
+
+        const scripts = container.querySelectorAll('script');
+        scripts.forEach((oldScript) => {
+          const newScript = document.createElement('script');
+          Array.from(oldScript.attributes).forEach((attr) => {
+            newScript.setAttribute(attr.name, attr.value);
+          });
+          if (oldScript.innerHTML) {
+            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+          }
+          document.head.appendChild(newScript);
         });
 
-        // نسخ المحتوى الداخلي للسكربت إن وجد
-        if (oldScript.innerHTML) {
-          newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-        }
+        const otherTags = container.querySelectorAll('meta, link, style');
+        otherTags.forEach((tag) => {
+          document.head.appendChild(tag.cloneNode(true));
+        });
 
-        document.head.appendChild(newScript);
-      });
+      } catch (error) {
+        console.error("Error injecting external scripts:", error);
+      }
+    };
 
-      // حقن الأكواد الأخرى (مثل meta tags أو css) التي ليست سكربتات
-      const otherTags = container.querySelectorAll('meta, link, style');
-      otherTags.forEach((tag) => {
-        document.head.appendChild(tag.cloneNode(true));
-      });
-
-    } catch (error) {
-      console.error("Error injecting external scripts:", error);
-    }
+    loadScripts();
   }, []);
 
-  return null; // هذا المكون لا يظهر شيئاً في الواجهة
+  return null;
 };
 
 export default ExternalScripts;
