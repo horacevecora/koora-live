@@ -8,7 +8,6 @@ import NotFound from "./pages/NotFound";
 import PlayerPage from "./pages/PlayerPage";
 import RealPlayer from "./pages/RealPlayer";
 import AdminPanel from "./pages/AdminPanel";
-import SingleChannel from "./pages/SingleChannel";
 
 const queryClient = new QueryClient();
 
@@ -23,7 +22,6 @@ const App = () => (
           <Route path="/player" element={<PlayerPage />} />
           <Route path="/real.html" element={<RealPlayer />} />
           <Route path="/admin" element={<AdminPanel />} />
-          <Route path="/live/:slug" element={<SingleChannel />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
