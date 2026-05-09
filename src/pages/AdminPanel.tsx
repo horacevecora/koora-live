@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Layout, ExternalLink, Code, Loader2, Home, Download, Upload, ListPlus, Copy, LogOut } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,8 +28,9 @@ interface Page {
 const AdminPanel = () => {
   const navigate = useNavigate();
   
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [accessCode, setAccessCode] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const [pages, setPages] = useState<Page[]>([]);
   const [activePageId, setActivePageId] = useState<string | null>(null);
@@ -45,22 +46,32 @@ const AdminPanel = () => {
   const [externalScripts, setExternalScripts] = useState("");
   const [bulkInput, setBulkInput] = useState("");
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate('/login');
-      } else {
-        setIsAuthenticated(true);
-        fetchInitialData();
-      }
-    };
-    checkAuth();
-  }, [navigate]);
+  // الكود السري الافتراضي (يمكنك تغييره هنا)
+  const SECRET_CODE = "2026"; 
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate('/login');
+  useEffect(() => {
+    const savedAuth = localStorage.getItem('admin_unlocked');
+    if (savedAuth === 'true') {
+      setIsUnlocked(true);
+      fetchInitialData();
+    }
+  }, []);
+
+  const handleUnlock = () => {
+    if (accessCode === SECRET_CODE) {
+      setIsUnlocked(true);
+      localStorage.setItem('admin_unlocked', 'true');
+      fetchInitialData();
+      showSuccess("تم الدخول بنجاح");
+    } else {
+      showError("الكود السري غير صحيح");
+    }
+  };
+
+  const handleLogout = () => {
+    setIsUnlocked(false);
+    localStorage.removeItem('admin_unlocked');
+    navigate('/');
   };
 
   const fetchInitialData = async () => {
@@ -91,7 +102,6 @@ const AdminPanel = () => {
 
     } catch (error) {
       console.error("Error fetching data:", error);
-      showError("فشل في تحميل البيانات");
     } finally {
       setIsLoading(false);
     }
@@ -104,11 +114,8 @@ const AdminPanel = () => {
       .eq('page_id', pageId)
       .order('sort_order', { ascending: true });
     
-    if (error) {
-      showError("فشل في تحميل القنوات");
-    } else {
-      setServers(data || []);
-    }
+    if (error) showError("فشل في تحميل القنوات");
+    else setServers(data || []);
   };
 
   const addPage = async () => {
@@ -119,9 +126,8 @@ const AdminPanel = () => {
       .select()
       .single();
 
-    if (error) {
-      showError("فشل في إنشاء الصفحة");
-    } else {
+    if (error) showError("فشل في إنشاء الصفحة");
+    else {
       setPages([...pages, data]);
       setNewPageName("");
       setNewPageSlug("");
@@ -132,26 +138,21 @@ const AdminPanel = () => {
   const deletePage = async (id: string, slug: string) => {
     if (slug === 'default') return;
     const { error } = await supabase.from('pages').delete().eq('id', id);
-    if (error) {
-      showError("فشل في حذف الصفحة");
-    } else {
+    if (error) showError("فشل في حذف الصفحة");
+    else {
       setPages(pages.filter(p => p.id !== id));
       showSuccess("تم حذف الصفحة");
     }
   };
 
-  const getCleanLink = (url: string) => {
+  const copyToClipboard = (url: string) => {
+    let cleanUrl = url;
     if (url.includes('<iframe')) {
       const match = url.match(/src=["']([^"']+)["']/);
-      return match ? match[1] : url;
+      cleanUrl = match ? match[1] : url;
     }
-    return url;
-  };
-
-  const copyToClipboard = (url: string) => {
-    const cleanUrl = getCleanLink(url);
     navigator.clipboard.writeText(cleanUrl);
-    showSuccess("تم نسخ الرابط النظيف");
+    showSuccess("تم نسخ الرابط");
   };
 
   const handleSubmit = async () => {
@@ -216,7 +217,7 @@ const AdminPanel = () => {
       const { error } = await supabase.from('servers').insert(newServers);
       if (error) showError("فشل الإضافة الجماعية");
       else {
-        showSuccess(`تم إضافة ${newServers.length} قناة بنجاح`);
+        showSuccess(`تم إضافة ${newServers.length} قناة`);
         fetchServers(activePageId);
         setBulkInput("");
       }
@@ -235,14 +236,42 @@ const AdminPanel = () => {
       .upsert({ key: 'external_scripts', value: externalScripts }, { onConflict: 'key' });
     
     if (error) showError("فشل حفظ الأكواد");
-    else showSuccess("تم حفظ الأكواد بنجاح");
+    else showSuccess("تم حفظ الأكواد");
   };
+
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans" dir="rtl">
+        <Card className="w-full max-w-md bg-[#0f172a] border-slate-800 text-white shadow-2xl">
+          <CardHeader className="text-center space-y-2">
+            <div className="mx-auto w-12 h-12 bg-indigo-600/20 rounded-full flex items-center justify-center mb-2">
+              <Lock className="text-indigo-500" size={24} />
+            </div>
+            <CardTitle className="text-2xl font-black">لوحة التحكم</CardTitle>
+            <p className="text-slate-400 text-xs">أدخل الكود السري للوصول</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input 
+              type="password" 
+              placeholder="الكود السري" 
+              value={accessCode} 
+              onChange={(e) => setAccessCode(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
+              className="bg-slate-900 border-slate-700 text-center text-lg tracking-widest"
+            />
+            <Button onClick={handleUnlock} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold">دخول</Button>
+            <Button onClick={() => navigate('/')} variant="ghost" className="w-full text-slate-500 text-xs">العودة للرئيسية</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white">
         <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
-        <p>جارٍ التحقق من الصلاحيات...</p>
+        <p>جارٍ التحميل...</p>
       </div>
     );
   }
@@ -255,7 +284,7 @@ const AdminPanel = () => {
           <h1 className="text-2xl font-black text-indigo-400">لوحة التحكم السحابية</h1>
           <div className="flex gap-2">
             <Button onClick={handleLogout} variant="outline" className="border-red-900/50 text-red-400 hover:bg-red-900/20 gap-2 text-xs">
-              <LogOut size={16} /> تسجيل الخروج
+              <LogOut size={16} /> خروج
             </Button>
             <Button onClick={() => navigate('/')} variant="outline" className="border-slate-700 text-slate-300 hover:bg-white/5 gap-2 text-xs">
               <Home size={16} /> الرئيسية

@@ -9,7 +9,6 @@ import NotFound from "./pages/NotFound";
 import PlayerPage from "./pages/PlayerPage";
 import RealPlayer from "./pages/RealPlayer";
 import AdminPanel from "./pages/AdminPanel";
-import Login from "./pages/Login";
 import Matches from "./pages/Matches";
 import ExternalScripts from "./components/ExternalScripts";
 
@@ -30,7 +29,6 @@ const App = () => (
             <Route path="/real.html" element={<RealPlayer />} />
             <Route path="/p/:slug" element={<RealPlayer />} />
             <Route path="/admin" element={<AdminPanel />} />
-            <Route path="/login" element={<Login />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
