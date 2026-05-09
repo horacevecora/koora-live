@@ -21,6 +21,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/player" element={<PlayerPage />} />
           <Route path="/real.html" element={<RealPlayer />} />
+          {/* المسار الجديد للصفحات المخصصة */}
+          <Route path="/live/:slug" element={<RealPlayer />} />
           <Route path="/admin" element={<AdminPanel />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
