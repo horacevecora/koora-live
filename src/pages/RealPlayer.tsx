@@ -371,8 +371,8 @@ export default function RealPlayer() {
           <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="ملء الشاشة">
             <Maximize size={28} />
           </button>
-          {/* الزر الخفي مزاح لليمين بمسافة gap-12 */}
-          <div className="ml-12">
+          {/* الزر الخفي مزاح لليمين بمسافة أكبر (ml-32) لإبعاده عن زر التكبير */}
+          <div className="ml-32">
             <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
               <Settings size={8} />
             </button>
