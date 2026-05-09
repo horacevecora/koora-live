@@ -8,8 +8,8 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy, ChevronLeft } from "lucide-react";
-import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy } from "lucide-react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { showSuccess } from "@/utils/toast";
@@ -446,15 +446,6 @@ export default function RealPlayer() {
       <div className="absolute top-4 right-6 md:right-24 z-50">
         <button onClick={() => navigate('/')} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="الرئيسية"><Home size={24} /></button>
       </div>
-
-      {/* مسار التنقل (Breadcrumbs) */}
-      <nav className="w-full max-w-[1200px] flex items-center gap-2 text-[10px] font-bold text-slate-500 mb-4 bg-white/5 w-fit px-4 py-2 rounded-full border border-white/5" dir="rtl">
-        <Link to="/" className="hover:text-[#00e676] transition-colors">الرئيسية</Link>
-        <ChevronLeft size={12} />
-        <Link to="/matches" className="hover:text-[#00e676] transition-colors">جدول المباريات</Link>
-        <ChevronLeft size={12} />
-        <span className="text-slate-300 truncate max-w-[150px]">{pageInfo?.name}</span>
-      </nav>
 
       <article id="main-player-wrapper" className="w-full max-w-[1200px] rounded-2xl bg-black flex flex-col relative transition-all duration-500 border border-indigo-500/30 shadow-[0_0_25px_rgba(99,102,241,0.25)]">
         <nav className="flex flex-wrap bg-slate-900/80 backdrop-blur border-b border-white/5 rounded-t-2xl overflow-hidden" dir="rtl">
