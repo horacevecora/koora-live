@@ -44,53 +44,7 @@ export default function RealPlayer() {
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
-
-  useEffect(() => {
-    const loadData = async () => {
-      setFetching(true);
-      try {
-        const { data: pageData, error: pageError } = await supabase
-          .from('pages')
-          .select('id')
-          .eq('slug', pageSlug)
-          .single();
-
-        if (pageError || !pageData) {
-          if (pageSlug === 'default') {
-            const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
-            setServers(def);
-            buildPlayer(def[0], false, false);
-          } else {
-            setError("الصفحة غير موجودة");
-          }
-          return;
-        }
-
-        const { data: serversData, error: serversError } = await supabase
-          .from('servers')
-          .select('*')
-          .eq('page_id', pageData.id)
-          .order('sort_order', { ascending: true });
-
-        if (serversError) throw serversError;
-
-        if (serversData && serversData.length > 0) {
-          setServers(serversData);
-          buildPlayer(serversData[0], false, false);
-        } else {
-          setError("لا توجد قنوات مضافة لهذه الصفحة");
-        }
-      } catch (err) {
-        console.error("Error loading player data:", err);
-        setError("فشل الاتصال بقاعدة البيانات");
-      } finally {
-        setFetching(false);
-      }
-    };
-
-    loadData();
-    return () => destroy();
-  }, [pageSlug]);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const destroy = useCallback(() => {
     if (monitorInterval.current) {
@@ -317,6 +271,59 @@ export default function RealPlayer() {
     },
     [destroy, hasInteracted]
   );
+
+  useEffect(() => {
+    const loadData = async () => {
+      setFetching(true);
+      try {
+        const { data: pageData, error: pageError } = await supabase
+          .from('pages')
+          .select('id')
+          .eq('slug', pageSlug)
+          .single();
+
+        if (pageError || !pageData) {
+          if (pageSlug === 'default') {
+            const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
+            setServers(def);
+          } else {
+            setError("الصفحة غير موجودة");
+          }
+          return;
+        }
+
+        const { data: serversData, error: serversError } = await supabase
+          .from('servers')
+          .select('*')
+          .eq('page_id', pageData.id)
+          .order('sort_order', { ascending: true });
+
+        if (serversError) throw serversError;
+
+        if (serversData && serversData.length > 0) {
+          setServers(serversData);
+        } else {
+          setError("لا توجد قنوات مضافة لهذه الصفحة");
+        }
+      } catch (err) {
+        console.error("Error loading player data:", err);
+        setError("فشل الاتصال بقاعدة البيانات");
+      } finally {
+        setFetching(false);
+      }
+    };
+
+    loadData();
+    return () => destroy();
+  }, [pageSlug, destroy]);
+
+  // تشغيل السيرفر الأول تلقائياً بمجرد جاهزية البيانات
+  useEffect(() => {
+    if (!fetching && servers.length > 0 && !isInitialized && containerRef.current) {
+      buildPlayer(servers[0], false, false);
+      setIsInitialized(true);
+    }
+  }, [fetching, servers, isInitialized, buildPlayer]);
 
   const switchServer = useCallback(
     (index: number) => {
