@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, Home } from "lucide-react";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, Home, Download, Upload, ListPlus } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,7 @@ interface Server {
   url: string;
   type: string;
   sort_order: number;
+  page_id?: string;
 }
 
 interface Page {
@@ -43,6 +44,7 @@ const AdminPanel = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [externalScripts, setExternalScripts] = useState("");
+  const [bulkInput, setBulkInput] = useState("");
 
   useEffect(() => {
     const authStatus = sessionStorage.getItem('admin_auth');
@@ -218,6 +220,93 @@ const AdminPanel = () => {
     }
   };
 
+  const handleBulkAdd = async () => {
+    if (!bulkInput || !activePageId) return;
+    const lines = bulkInput.split('\n');
+    const newServers = lines.map(line => {
+      const parts = line.split(',');
+      if (parts.length >= 2) {
+        const name = parts[0].trim();
+        const url = parts.slice(1).join(',').trim();
+        return {
+          name,
+          url,
+          type: url.includes('.m3u8') ? 'm3u8' : 'iframe',
+          page_id: activePageId,
+          sort_order: servers.length
+        };
+      }
+      return null;
+    }).filter(Boolean) as Server[];
+
+    if (newServers.length > 0) {
+      const { error } = await supabase.from('servers').insert(newServers);
+      if (error) showError("فشل الإضافة الجماعية");
+      else {
+        showSuccess(`تم إضافة ${newServers.length} قناة بنجاح`);
+        fetchServers(activePageId);
+        setBulkInput("");
+      }
+    }
+  };
+
+  const exportData = async () => {
+    try {
+      const { data: allServers } = await supabase.from('servers').select('*');
+      const exportObj = {
+        pages: pages,
+        servers: allServers,
+        scripts: externalScripts
+      };
+      const blob = new Blob([JSON.stringify(exportObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `koora-live-backup-${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      showSuccess("تم تصدير النسخة الاحتياطية");
+    } catch (err) {
+      showError("فشل التصدير");
+    }
+  };
+
+  const importData = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const data = JSON.parse(event.target?.result as string);
+        if (data.pages && data.servers) {
+          setIsLoading(true);
+          // ملاحظة: الاستيراد هنا سيضيف البيانات الجديدة بجانب القديمة
+          // إذا أردت مسح القديم أولاً يجب إضافة منطق الحذف هنا
+          for (const page of data.pages) {
+            const { data: pData } = await supabase.from('pages').upsert({ name: page.name, slug: page.slug }, { onConflict: 'slug' }).select().single();
+            if (pData) {
+              const pageServers = data.servers.filter((s: any) => s.page_id === page.id || s.page_slug === page.slug);
+              const serversToInsert = pageServers.map((s: any) => ({
+                name: s.name,
+                url: s.url,
+                type: s.type,
+                page_id: pData.id,
+                sort_order: s.sort_order
+              }));
+              if (serversToInsert.length > 0) await supabase.from('servers').insert(serversToInsert);
+            }
+          }
+          showSuccess("تم استيراد البيانات بنجاح");
+          fetchInitialData();
+        }
+      } catch (err) {
+        showError("ملف غير صالح");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const deleteChannel = async (id: string) => {
     const { error } = await supabase.from('servers').delete().eq('id', id);
     if (error) showError("فشل الحذف");
@@ -291,19 +380,30 @@ const AdminPanel = () => {
 
   return (
     <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans" dir="rtl">
-      <div className="max-w-5xl mx-auto space-y-8">
+      <div className="max-w-6xl mx-auto space-y-8">
         
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-black text-indigo-400">لوحة التحكم</h1>
-          <Button onClick={() => navigate('/')} variant="outline" className="border-slate-700 text-slate-300 hover:bg-white/5 gap-2">
-            <Home size={18} /> الصفحة الرئيسية
-          </Button>
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+          <h1 className="text-2xl font-black text-indigo-400">لوحة التحكم السحابية</h1>
+          <div className="flex gap-2">
+            <Button onClick={exportData} variant="outline" className="border-slate-700 text-slate-300 hover:bg-white/5 gap-2 text-xs">
+              <Download size={16} /> تصدير نسخة احتياطية
+            </Button>
+            <label className="cursor-pointer">
+              <div className="flex items-center gap-2 px-4 py-2 border border-slate-700 rounded-md text-slate-300 hover:bg-white/5 text-xs">
+                <Upload size={16} /> استيراد نسخة
+              </div>
+              <input type="file" accept=".json" onChange={importData} className="hidden" />
+            </label>
+            <Button onClick={() => navigate('/')} variant="outline" className="border-slate-700 text-slate-300 hover:bg-white/5 gap-2 text-xs">
+              <Home size={16} /> الرئيسية
+            </Button>
+          </div>
         </div>
 
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
-            <p>جارٍ تحميل البيانات من السحابة...</p>
+            <p>جارٍ معالجة البيانات السحابية...</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -329,6 +429,22 @@ const AdminPanel = () => {
                       </div>
                     ))}
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
+                <CardHeader>
+                  <CardTitle className="text-md flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
+                  <CardDescription className="text-[10px]">أضف قنوات متعددة: الاسم، الرابط (كل قناة في سطر)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <Textarea 
+                    placeholder="سيرفر 1, https://example.com/live.m3u8&#10;سيرفر 2, https://example.com/embed" 
+                    value={bulkInput}
+                    onChange={(e) => setBulkInput(e.target.value)}
+                    className="bg-slate-900 border-slate-700 min-h-[120px] text-[10px]"
+                  />
+                  <Button onClick={handleBulkAdd} className="w-full bg-indigo-600 text-xs h-8">إضافة الكل</Button>
                 </CardContent>
               </Card>
             </div>
