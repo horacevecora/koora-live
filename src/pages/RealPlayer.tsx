@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
@@ -34,7 +34,6 @@ export default function RealPlayer() {
   const [error, setError] = useState<string | null>(null);
   const [clickCount, setClickCount] = useState(0);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
@@ -137,11 +136,9 @@ export default function RealPlayer() {
         video.setAttribute("referrerpolicy", "no-referrer");
         container.appendChild(video);
 
-        // معالجة التوقف المفاجئ (Stall Recovery)
         video.onwaiting = () => setLoading(true);
         video.onplaying = () => setLoading(false);
         video.onstalled = () => {
-          // إذا توقف البث، نحاول القفز لنهاية التخزين لاستئناف العمل
           if (video.buffered.length > 0) {
             video.currentTime = video.buffered.end(video.buffered.length - 1) - 0.1;
           }
@@ -173,9 +170,9 @@ export default function RealPlayer() {
             }, {
               enableWorker: true, 
               enableStashBuffer: true, 
-              stashInitialSize: 1024 * 1024, // 1MB buffer (مثل VLC) لضمان استقرار البث
+              stashInitialSize: 512 * 1024, // تقليل الحجم الابتدائي لسرعة البدء (512KB)
               liveBufferLatencyChasing: true, 
-              liveBufferLatencyMaxLatency: 10, // السماح بتأخير حتى 10 ثوانٍ لمنع التقطيع
+              liveBufferLatencyMaxLatency: 5, // مطاردة البث إذا تأخر أكثر من 5 ثوانٍ
               autoCleanupSourceBuffer: true, 
               lazyLoad: false,
               statisticsInfoReportInterval: 1000
@@ -224,9 +221,10 @@ export default function RealPlayer() {
           if (Hls.isSupported()) {
             const hls = new Hls({ 
               xhrSetup: (xhr) => { xhr.withCredentials = false; },
-              liveSyncDurationCount: 5, // زيادة عدد القطع المخزنة لتقليل التقطيع
-              liveMaxLatencyDurationCount: 15,
-              enableWorker: true
+              liveSyncDurationCount: 3, // تقليل عدد القطع لتقليل التأخير
+              liveMaxLatencyDurationCount: 8,
+              enableWorker: true,
+              lowLatencyMode: true // تفعيل وضع التأخير المنخفض
             });
             hlsRef.current = hls;
             hls.loadSource(url);
@@ -313,7 +311,6 @@ export default function RealPlayer() {
     (index: number) => {
       if (servers[index]) {
         setHasInteracted(true);
-        setRetryCount(0);
         setActiveIndex(index);
         buildPlayer(servers[index], false, true);
       }
@@ -400,6 +397,11 @@ export default function RealPlayer() {
               <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ تحميل البث...</p>
             </div>
           )}
+
+          <div className="absolute top-4 right-4 z-20 flex items-center gap-2 bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 px-3 py-1.5 rounded-full">
+            <Zap size={14} className="text-emerald-400 animate-pulse" />
+            <span className="text-[10px] font-black text-emerald-400 uppercase tracking-wider">وضع السرعة القصوى</span>
+          </div>
 
           {showUnmuteHint && !loading && (
             <div 
