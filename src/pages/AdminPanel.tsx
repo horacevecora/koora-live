@@ -31,6 +31,7 @@ const AdminPanel = () => {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [accessCode, setAccessCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isCheckingCode, setIsCheckingCode] = useState(false);
 
   const [pages, setPages] = useState<Page[]>([]);
   const [activePageId, setActivePageId] = useState<string | null>(null);
@@ -46,8 +47,6 @@ const AdminPanel = () => {
   const [externalScripts, setExternalScripts] = useState("");
   const [bulkInput, setBulkInput] = useState("");
 
-  const SECRET_CODE = "simo"; 
-
   useEffect(() => {
     const savedAuth = localStorage.getItem('admin_unlocked');
     if (savedAuth === 'true') {
@@ -56,14 +55,37 @@ const AdminPanel = () => {
     }
   }, []);
 
-  const handleUnlock = () => {
-    if (accessCode === SECRET_CODE) {
-      setIsUnlocked(true);
-      localStorage.setItem('admin_unlocked', 'true');
-      fetchInitialData();
-      showSuccess("تم الدخول بنجاح");
-    } else {
-      showError("الكود السري غير صحيح");
+  const handleUnlock = async () => {
+    setIsCheckingCode(true);
+    try {
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'admin_password')
+        .single();
+
+      if (error) throw error;
+
+      if (accessCode === data.value) {
+        setIsUnlocked(true);
+        localStorage.setItem('admin_unlocked', 'true');
+        fetchInitialData();
+        showSuccess("تم الدخول بنجاح");
+      } else {
+        showError("الكود السري غير صحيح");
+      }
+    } catch (err) {
+      // Fallback if setting doesn't exist yet
+      if (accessCode === "simo") {
+        setIsUnlocked(true);
+        localStorage.setItem('admin_unlocked', 'true');
+        fetchInitialData();
+        showSuccess("تم الدخول (كود احتياطي)");
+      } else {
+        showError("خطأ في التحقق من الكود");
+      }
+    } finally {
+      setIsCheckingCode(false);
     }
   };
 
@@ -251,6 +273,12 @@ const AdminPanel = () => {
     else showSuccess("تم حفظ الأكواد");
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem('admin_unlocked');
+    setIsUnlocked(false);
+    setAccessCode("");
+  };
+
   if (!isUnlocked) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans" dir="rtl">
@@ -270,8 +298,15 @@ const AdminPanel = () => {
               onChange={(e) => setAccessCode(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleUnlock()}
               className="bg-slate-900 border-slate-700 text-center text-lg tracking-widest"
+              disabled={isCheckingCode}
             />
-            <Button onClick={handleUnlock} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold">دخول</Button>
+            <Button 
+              onClick={handleUnlock} 
+              className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold"
+              disabled={isCheckingCode}
+            >
+              {isCheckingCode ? <Loader2 className="animate-spin" size={18} /> : "دخول"}
+            </Button>
             <Button onClick={() => navigate('/')} variant="ghost" className="w-full text-slate-500 text-xs">العودة للرئيسية</Button>
           </CardContent>
         </Card>
@@ -299,18 +334,15 @@ const AdminPanel = () => {
             <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10">
               <Home size={16} /> الرئيسية
             </Button>
-            <Button variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10">
-              <Upload size={16} /> استيراد نسخة
-            </Button>
-            <Button variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10">
-              <Download size={16} /> تصدير نسخة احتياطية
+            <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 hover:bg-red-900/40 gap-2 text-xs h-10">
+              <LogOut size={16} /> خروج
             </Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Right Column: Pages & Bulk (Now on the right in RTL) */}
+          {/* Right Column: Pages & Bulk */}
           <div className="lg:col-span-4 space-y-8">
             
             {/* Pages Section */}
@@ -366,7 +398,7 @@ const AdminPanel = () => {
             </Card>
           </div>
 
-          {/* Left Column: Channels & SEO (Now on the left in RTL) */}
+          {/* Left Column: Channels & SEO */}
           <div className="lg:col-span-8 space-y-8">
             
             {/* Edit Channels */}
@@ -392,7 +424,6 @@ const AdminPanel = () => {
                     {editingId ? 'تحديث' : 'إضافة'}
                   </Button>
                 </div>
-                <p className="text-[10px] text-slate-500 text-center">يدعم: Iframe, m3u8, ts, YouTube, Facebook, Twitch, Kick, Raw Streams</p>
                 
                 <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
                   {servers.map((s, i) => (
@@ -402,8 +433,6 @@ const AdminPanel = () => {
                         <div className="text-[10px] text-slate-500 truncate max-w-[400px]">{s.url}</div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <button className="p-2 text-slate-500 hover:text-white"><ChevronDown size={16} /></button>
-                        <button className="p-2 text-slate-500 hover:text-white"><ChevronUp size={16} /></button>
                         <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
                         <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                         <button onClick={() => copyToClipboard(s.url)} className="p-2 text-slate-500 hover:text-emerald-400"><Copy size={16} /></button>
@@ -420,7 +449,6 @@ const AdminPanel = () => {
                 <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
                   <Code size={20} /> إعدادات الأكواد (Ads/SEO)
                 </CardTitle>
-                <p className="text-[10px] text-slate-500 text-center">سيتم حفظ هذه الأكواد في قاعدة البيانات لتظهر لجميع الزوار.</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea 
@@ -437,16 +465,6 @@ const AdminPanel = () => {
             </Card>
           </div>
 
-        </div>
-
-        {/* Footer Button */}
-        <div className="flex justify-center pt-12 pb-8">
-          <Button 
-            onClick={() => navigate('/')} 
-            className="bg-red-600 hover:bg-red-700 text-white font-black px-16 py-8 rounded-2xl text-xl shadow-2xl shadow-red-600/20 transition-transform hover:scale-105"
-          >
-            إغلاق والعودة للمشاهدة
-          </Button>
         </div>
       </div>
 
