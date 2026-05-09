@@ -627,6 +627,15 @@ const AdminPanel = () => {
                       <div className="flex items-center gap-2">
                         <button onClick={() => deleteFile(file.id)} className="text-red-500 hover:text-red-400 p-1"><Trash2 size={16} /></button>
                         <button onClick={() => { setNewFileName(file.filename); setNewFileContent(file.content); }} className="text-indigo-400 hover:text-indigo-300 p-1"><Edit2 size={16} /></button>
+                        <a 
+                          href={`/${file.filename}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-emerald-400 hover:text-emerald-300 p-1"
+                          title="معاينة الرابط"
+                        >
+                          <ExternalLink size={16} />
+                        </a>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-mono text-slate-400">/{file.filename}</span>
