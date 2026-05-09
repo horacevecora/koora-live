@@ -341,7 +341,7 @@ const AdminPanel = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea 
-                  placeholder="سيرفر 1 = https://example.com/live.m3u8&#10;سيرفر 2 = https://example.com/embed" 
+                  placeholder={"سيرفر 1 = https://example.com/live.m3u8\nسيرفر 2 = https://example.com/embed\n..."} 
                   value={bulkInput}
                   onChange={(e) => setBulkInput(e.target.value)}
                   className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right"
