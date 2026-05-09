@@ -7,51 +7,39 @@ const ExternalScripts = () => {
   useEffect(() => {
     const loadScripts = async () => {
       try {
+        // جلب الأكواد من Supabase
         const { data, error } = await supabase
           .from('site_settings')
           .select('value')
           .eq('key', 'external_scripts')
           .single();
 
-        if (error) {
-          console.error("[ExternalScripts] Error fetching from Supabase:", error);
-          return;
-        }
+        if (error || !data?.value) return;
 
-        if (!data?.value) {
-          console.log("[ExternalScripts] No scripts found in Admin panel.");
-          return;
-        }
-
-        console.log("[ExternalScripts] Injecting scripts from Admin...");
-
-        // استخدام DOMParser لضمان معالجة صحيحة للأكواد
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(data.value, 'text/html');
+        // تحويل النص إلى عناصر HTML وحقنها مباشرة في الـ Head
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = data.value.trim();
         
-        // حقن جميع العناصر الموجودة في الـ head والـ body من الكود المخزن
-        const elements = doc.querySelectorAll('script, meta, link, style');
-        
-        elements.forEach((el) => {
-          const newEl = document.createElement(el.tagName);
-          
-          // نسخ جميع الخصائص (Attributes)
-          Array.from(el.attributes).forEach(attr => {
-            newEl.setAttribute(attr.name, attr.value);
-          });
-          
-          // نسخ المحتوى الداخلي (مثل أكواد الجافا سكريبت أو الـ CSS)
-          if (el.innerHTML) {
-            newEl.innerHTML = el.innerHTML;
+        const nodes = Array.from(tempDiv.childNodes);
+        nodes.forEach(node => {
+          if (node instanceof HTMLElement || node instanceof Text) {
+            // إذا كان سكريبت، نحتاج لإنشائه يدوياً ليعمل
+            if (node instanceof HTMLScriptElement) {
+              const script = document.createElement('script');
+              Array.from(node.attributes).forEach(attr => script.setAttribute(attr.name, attr.value));
+              script.innerHTML = node.innerHTML;
+              document.head.appendChild(script);
+            } else {
+              // للميتا تاج والستايل والروابط
+              document.head.appendChild(node.cloneNode(true));
+            }
           }
-          
-          document.head.appendChild(newEl);
         });
 
-        console.log("[ExternalScripts] Injection complete.");
+        console.log("✅ [Admin Scripts] تم حقن الأكواد بنجاح من لوحة التحكم");
 
-      } catch (error) {
-        console.error("[ExternalScripts] Critical error:", error);
+      } catch (err) {
+        console.error("❌ [Admin Scripts] خطأ في الحقن:", err);
       }
     };
 
