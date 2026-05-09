@@ -8,8 +8,8 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy, ChevronLeft, HelpCircle, Info } from "lucide-react";
-import { useNavigate, useParams, useLocation, Link } from "react-router-dom";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy } from "lucide-react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { showSuccess } from "@/utils/toast";
@@ -45,14 +45,12 @@ export default function RealPlayer() {
 
   const [servers, setServers] = useState<Server[]>([]);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
-  const [otherPages, setOtherPages] = useState<PageInfo[]>([]);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [clickCount, setClickCount] = useState(0);
   const [showUnmuteHint, setShowUnmuteHint] = useState(false);
-  const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -118,13 +116,10 @@ export default function RealPlayer() {
       setLoading(true);
       setError(null);
       setShowUnmuteHint(false);
-      setIsCodecUnsupported(false);
       
       const url = server.url.trim();
-      const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":25461");
-      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort;
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      const isRawStream = (url.includes("stream") || url.includes("type=http") || isTS);
+      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes(".ts"));
 
       if (isM3U8) {
         const video = document.createElement("video");
@@ -210,18 +205,12 @@ export default function RealPlayer() {
           return;
         }
 
-        if (isTS) {
+        if (url.includes(".ts")) {
           try {
             const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: url, cors: true });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
             player.load();
-            player.on(mpegts.Events.ERROR, (type: any, detail: any) => {
-              if (detail === mpegts.ErrorDetails.MEDIA_MSE_ERROR || type.includes('unsupported')) {
-                setIsCodecUnsupported(true);
-                buildPlayer(server, true, shouldUnmute);
-              }
-            });
             attemptPlay();
           } catch (e) {
             buildPlayer(server, true, shouldUnmute);
@@ -338,14 +327,6 @@ export default function RealPlayer() {
           setServers(def);
         }
 
-        const { data: allPages } = await supabase
-          .from('pages')
-          .select('id, name, slug')
-          .neq('slug', pageSlug)
-          .limit(10);
-        
-        if (allPages) setOtherPages(allPages);
-
       } catch (err) {
         console.error("Error loading player data:", err);
         setError("فشل الاتصال بقاعدة البيانات");
@@ -403,53 +384,6 @@ export default function RealPlayer() {
   const pageDesc = pageInfo ? `شاهد ${pageInfo.name} بث مباشر بدون تقطيع بجودة عالية على كورة لايف الرسمي.` : "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع.";
   const canonicalUrl = `https://${window.location.hostname}${location.pathname}`;
 
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "VideoObject",
-    "name": pageTitle,
-    "description": pageDesc,
-    "thumbnailUrl": "https://www.koora-live.com/placeholder.svg",
-    "uploadDate": new Date().toISOString(),
-    "publication": {
-      "@type": "BroadcastEvent",
-      "isLiveBroadcast": true,
-      "startDate": new Date().toISOString()
-    }
-  };
-
-  const breadcrumbLd = {
-    "@context": "https://schema.org",
-    "@type": "BreadcrumbList",
-    "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "الرئيسية", "item": `https://${window.location.hostname}/` },
-      { "@type": "ListItem", "position": 2, "name": "بث مباشر", "item": canonicalUrl },
-      { "@type": "ListItem", "position": 3, "name": pageInfo?.name || "المباراة" }
-    ]
-  };
-
-  const faqLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    "mainEntity": [
-      {
-        "@type": "Question",
-        "name": `كيف يمكنني مشاهدة ${pageInfo?.name || 'المباراة'} بث مباشر؟`,
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": `يمكنك مشاهدة ${pageInfo?.name || 'المباراة'} مباشرة عبر موقع كورة لايف الرسمي من خلال السيرفرات المتعددة التي نوفرها بجودات مختلفة تناسب جميع سرعات الإنترنت.`
-        }
-      },
-      {
-        "@type": "Question",
-        "name": "هل البث المباشر في كورة لايف يقطع؟",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "نوفر في كورة لايف سيرفرات قوية جداً تضمن لك مشاهدة بدون تقطيع حتى مع سرعات الإنترنت الضعيفة، كما نوفر جودات متعددة تبدأ من 144p وحتى 4K."
-        }
-      }
-    ]
-  };
-
   if (fetching) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white">
@@ -465,14 +399,6 @@ export default function RealPlayer() {
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
         <link rel="canonical" href={canonicalUrl} />
-        <meta property="og:title" content={pageTitle} />
-        <meta property="og:description" content={pageDesc} />
-        <meta property="og:url" content={canonicalUrl} />
-        <meta property="og:type" content="video.other" />
-        <meta name="twitter:card" content="summary_large_image" />
-        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
-        <script type="application/ld+json">{JSON.stringify(breadcrumbLd)}</script>
-        <script type="application/ld+json">{JSON.stringify(faqLd)}</script>
       </Helmet>
 
       <div className="absolute top-4 left-24 z-50">
@@ -537,69 +463,6 @@ export default function RealPlayer() {
           )}
         </div>
       </article>
-
-      {/* قسم المحتوى النصي الغني (SEO Content) */}
-      <section className="w-full max-w-[1200px] mt-10 grid grid-cols-1 md:grid-cols-3 gap-8" dir="rtl">
-        <div className="md:col-span-2 space-y-8">
-          <div className="bg-slate-900/40 border border-white/5 p-6 rounded-3xl">
-            <h1 className="text-2xl font-black text-white mb-4 flex items-center gap-2">
-              <Info className="text-indigo-500" size={24} />
-              تفاصيل البث المباشر: {pageInfo?.name}
-            </h1>
-            <p className="text-slate-400 leading-relaxed text-sm md:text-base">
-              مرحباً بكم في موقع كورة لايف الرسمي. نقدم لكم اليوم تغطية حصرية ومباشرة لـ <strong>{pageInfo?.name}</strong>. 
-              يمكنكم متابعة المباراة بجودة عالية وبدون تقطيع عبر سيرفراتنا المتطورة. 
-              نحن في كورة لايف نحرص على توفير أفضل تجربة مشاهدة للمشجع العربي، مع توفير جودات متعددة تناسب باقات الإنترنت المختلفة.
-            </p>
-          </div>
-
-          <div className="bg-slate-900/40 border border-white/5 p-6 rounded-3xl">
-            <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
-              <HelpCircle className="text-indigo-500" size={24} />
-              الأسئلة الشائعة حول البث
-            </h2>
-            <div className="space-y-6">
-              <div className="border-b border-white/5 pb-4">
-                <h3 className="font-bold text-indigo-400 mb-2">كيف أشاهد المباراة بدون تقطيع؟</h3>
-                <p className="text-slate-400 text-sm">اختر السيرفر المناسب لسرعة إنترنتك، إذا كان الإنترنت ضعيفاً ننصح باختيار جودة 360p أو 480p من إعدادات المشغل.</p>
-              </div>
-              <div className="border-b border-white/5 pb-4">
-                <h3 className="font-bold text-indigo-400 mb-2">هل يدعم الموقع المشاهدة عبر الجوال؟</h3>
-                <p className="text-slate-400 text-sm">نعم، موقع كورة لايف مصمم ليعمل بكفاءة عالية على جميع أجهزة الأندرويد والآيفون، كما يمكنك تثبيت الموقع كتطبيق PWA.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <aside className="space-y-6">
-          <h3 className="text-xl font-black text-white flex items-center gap-2">
-            <div className="w-2 h-8 bg-indigo-600 rounded-full" />
-            مباريات أخرى
-          </h3>
-          <div className="flex flex-col gap-3">
-            {otherPages.map((page) => (
-              <Link 
-                key={page.id} 
-                to={`/p/${page.slug}`}
-                className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl hover:bg-indigo-600/20 hover:border-indigo-500/50 transition-all group flex items-center justify-between"
-              >
-                <span className="font-bold text-slate-200 group-hover:text-white text-sm">{page.name}</span>
-                <ChevronLeft size={16} className="text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-[-4px] transition-all" />
-              </Link>
-            ))}
-          </div>
-        </aside>
-      </section>
-
-      <footer className="w-full max-w-[1200px] mt-12 pb-8 flex flex-col items-center gap-4 text-[11px] text-slate-500 px-4 border-t border-white/5 pt-8">
-        <div className="flex justify-between w-full items-center opacity-40">
-          <span dir="ltr" className="font-black tracking-tight">Koora Live - Kora Online</span>
-          <span dir="rtl" className="font-black">كورة لايف - ماتش لايف</span>
-        </div>
-        <p className="text-center max-w-2xl leading-relaxed">
-          موقع كورة لايف الرسمي يقدم لكم بث مباشر للمباريات بجودة عالية وبدون تقطيع. تابع أهم مباريات اليوم في جميع الدوريات العالمية والعربية عبر سيرفراتنا المتعددة.
-        </p>
-      </footer>
 
       <style>{`
         :root { --plyr-color-main: #6366f1; }

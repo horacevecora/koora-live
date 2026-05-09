@@ -1,12 +1,33 @@
 "use client";
 
+import React, { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Radio, Tv, Star, Hash } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Radio, Tv, Star, Hash, Info, HelpCircle, ChevronLeft } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
+import { supabase } from "@/integrations/supabase/client";
+
+interface PageInfo {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 const Index = () => {
   const navigate = useNavigate();
+  const [otherPages, setOtherPages] = useState<PageInfo[]>([]);
+
+  useEffect(() => {
+    const fetchPages = async () => {
+      const { data } = await supabase
+        .from('pages')
+        .select('id, name, slug')
+        .neq('slug', 'default')
+        .limit(10);
+      if (data) setOtherPages(data);
+    };
+    fetchPages();
+  }, []);
 
   const tags = [
     "كورة لايف", "بث مباشر", "يلا شوت", "كورة اون لاين", 
@@ -72,7 +93,7 @@ const Index = () => {
       </header>
 
       {/* المحتوى الرئيسي */}
-      <main className="relative z-10 flex-grow flex flex-col items-center justify-center px-4 py-12 text-center">
+      <main className="relative z-10 flex-grow flex flex-col items-center px-4 py-12 text-center">
         
         {/* قسم العناوين الكبيرة */}
         <div className="space-y-1 mb-6">
@@ -106,16 +127,8 @@ const Index = () => {
           ))}
         </div>
 
-        {/* الوصف */}
-        <p className="max-w-2xl text-slate-400 text-sm md:text-lg leading-relaxed mb-12 font-medium">
-          <Star className="inline-block text-yellow-400 ml-2 mb-1" size={18} fill="currentColor" />
-          مرحباً بك في موقع كورة لايف - وجهتك الأولى لمتابعة أهم مباريات اليوم بث مباشر
-          <br className="hidden md:block" />
-          بجودات متعددة تناسب جميع سرعات الإنترنت، تغطية شاملة لجميع الدوريات العالمية والعربية.
-        </p>
-
         {/* أزرار الأكشن */}
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-md mb-16">
           <Button 
             onClick={() => navigate('/real.html')}
             className="w-full bg-[#00e676] hover:bg-[#00c853] text-black font-black py-10 rounded-3xl text-2xl shadow-2xl shadow-emerald-500/30 transition-all hover:scale-105 flex items-center justify-center gap-4"
@@ -124,13 +137,79 @@ const Index = () => {
             دخول البث المباشر
           </Button>
         </div>
+
+        {/* قسم المحتوى النصي الغني (SEO Content) - تم نقله هنا */}
+        <section className="w-full max-w-[1200px] mt-10 grid grid-cols-1 md:grid-cols-3 gap-8 text-right" dir="rtl">
+          <div className="md:col-span-2 space-y-8">
+            <div className="bg-slate-900/40 border border-white/5 p-6 rounded-3xl">
+              <h3 className="text-2xl font-black text-white mb-4 flex items-center gap-2">
+                <Info className="text-[#00e676]" size={24} />
+                تفاصيل البث المباشر: الصفحة الرئيسية
+              </h3>
+              <p className="text-slate-400 leading-relaxed text-sm md:text-base">
+                مرحباً بكم في موقع كورة لايف الرسمي. نقدم لكم اليوم تغطية حصرية ومباشرة لـ <strong>أهم مباريات اليوم</strong>. 
+                يمكنكم متابعة المباريات بجودة عالية وبدون تقطيع عبر سيرفراتنا المتطورة. 
+                نحن في كورة لايف نحرص على توفير أفضل تجربة مشاهدة للمشجع العربي، مع توفير جودات متعددة تناسب باقات الإنترنت المختلفة.
+              </p>
+            </div>
+
+            <div className="bg-slate-900/40 border border-white/5 p-6 rounded-3xl">
+              <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2">
+                <HelpCircle className="text-[#00e676]" size={24} />
+                الأسئلة الشائعة حول البث
+              </h3>
+              <div className="space-y-6">
+                <div className="border-b border-white/5 pb-4">
+                  <h4 className="font-bold text-[#00e676] mb-2">كيف أشاهد المباراة بدون تقطيع؟</h4>
+                  <p className="text-slate-400 text-sm">اختر السيرفر المناسب لسرعة إنترنتك، إذا كان الإنترنت ضعيفاً ننصح باختيار جودة 360p أو 480p من إعدادات المشغل.</p>
+                </div>
+                <div className="border-b border-white/5 pb-4">
+                  <h4 className="font-bold text-[#00e676] mb-2">هل يدعم الموقع المشاهدة عبر الجوال؟</h4>
+                  <p className="text-slate-400 text-sm">نعم، موقع كورة لايف مصمم ليعمل بكفاءة عالية على جميع أجهزة الأندرويد والآيفون، كما يمكنك تثبيت الموقع كتطبيق PWA.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <aside className="space-y-6">
+            <h3 className="text-xl font-black text-white flex items-center gap-2">
+              <div className="w-2 h-8 bg-[#00e676] rounded-full" />
+              مباريات أخرى
+            </h3>
+            <div className="flex flex-col gap-3">
+              {otherPages.length > 0 ? (
+                otherPages.map((page) => (
+                  <Link 
+                    key={page.id} 
+                    to={`/p/${page.slug}`}
+                    className="bg-slate-900/50 border border-white/5 p-4 rounded-2xl hover:bg-[#00e676]/20 hover:border-[#00e676]/50 transition-all group flex items-center justify-between"
+                  >
+                    <span className="font-bold text-slate-200 group-hover:text-white text-sm">{page.name}</span>
+                    <ChevronLeft size={16} className="text-slate-500 group-hover:text-[#00e676] group-hover:translate-x-[-4px] transition-all" />
+                  </Link>
+                ))
+              ) : (
+                <p className="text-slate-500 text-xs">لا توجد مباريات أخرى حالياً</p>
+              )}
+            </div>
+          </aside>
+        </section>
       </main>
 
       {/* التذييل */}
       <footer className="relative z-10 p-8 text-center border-t border-white/5 bg-black/20">
-        <p className="text-slate-500 text-xs font-bold tracking-widest uppercase">
-          © 2026 Koora Live - جميع الحقوق محفوظة لموقع كورة لايف الرسمي
-        </p>
+        <div className="max-w-[1200px] mx-auto flex flex-col items-center gap-4">
+          <div className="flex justify-between w-full items-center opacity-40 text-[11px]">
+            <span dir="ltr" className="font-black tracking-tight">Koora Live - Kora Online</span>
+            <span dir="rtl" className="font-black">كورة لايف - ماتش لايف</span>
+          </div>
+          <p className="text-slate-500 text-xs font-bold tracking-widest uppercase">
+            © 2026 Koora Live - جميع الحقوق محفوظة لموقع كورة لايف الرسمي
+          </p>
+          <p className="text-slate-600 text-[10px] max-w-2xl leading-relaxed">
+            موقع كورة لايف الرسمي يقدم لكم بث مباشر للمباريات بجودة عالية وبدون تقطيع. تابع أهم مباريات اليوم في جميع الدوريات العالمية والعربية عبر سيرفراتنا المتعددة.
+          </p>
+        </div>
       </footer>
     </div>
   );
