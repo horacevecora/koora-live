@@ -55,9 +55,7 @@ export default function RealPlayer() {
   const [isMixedContent, setIsMixedContent] = useState(false);
   const [isNativeMode, setIsNativeMode] = useState(false);
 
-  // إزالة الميتا تاج العام للمرجع لأنه يسبب مشاكل مع يوتيوب
   useEffect(() => {
-    // نترك السياسة الافتراضية للمتصفح ونتحكم بها لكل iframe على حدة
     return () => {
       destroy();
     };
@@ -287,15 +285,15 @@ export default function RealPlayer() {
         container.appendChild(ifr);
         setTimeout(() => setShowUnmuteHint(true), 2000);
       } else if (ytId) {
+        const wrapper = document.createElement("div");
+        wrapper.className = "youtube-crop-wrapper";
         const ifr = document.createElement("iframe");
         const origin = window.location.origin;
-        // يوتيوب يحتاج لـ origin و referrer ليعمل بشكل صحيح
         ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&autoplay=1&mute=${shouldUnmute ? "0" : "1"}&controls=1&enablejsapi=1&origin=${encodeURIComponent(origin)}`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
         ifr.allow = "autoplay; fullscreen; picture-in-picture"; ifr.allowFullscreen = true;
-        // يوتيوب يحتاج لمعرفة المرجع (Referrer)
         ifr.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
-        container.appendChild(ifr);
+        wrapper.appendChild(ifr);
+        container.appendChild(wrapper);
       } else if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
         const ifr = container.querySelector("iframe");
@@ -303,7 +301,6 @@ export default function RealPlayer() {
       } else {
         const ifr = document.createElement("iframe");
         ifr.src = url; 
-        // الروابط العادية نمنع عنها المرجع لحمايتها
         ifr.setAttribute("referrerpolicy", "no-referrer"); 
         ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
         ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
@@ -556,6 +553,8 @@ export default function RealPlayer() {
         .live-video-element::-webkit-media-controls-time-remaining-display { display: none !important; }
         #main-player-wrapper:fullscreen { width: 100vw; height: 100vh; border-radius: 0; margin: 0; display: flex; align-items: center; justify-content: center; background: #000; box-shadow: none; border: none; }
         #main-player-wrapper:fullscreen .aspect-video { width: 100%; height: auto; max-height: 100vh; border-radius: 0; }
+        .youtube-crop-wrapper { position: relative; width: 100%; height: 100%; overflow: hidden; background: #000; }
+        .youtube-crop-wrapper iframe { position: absolute; width: 120%; height: 120%; top: -10%; left: -10%; border: none; }
       `}</style>
     </div>
   );
