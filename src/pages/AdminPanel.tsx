@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2 } from "lucide-react";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, RotateCcw, Lock, Layout, ExternalLink, Code, Loader2, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -43,6 +43,7 @@ const AdminPanel = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [externalScripts, setExternalScripts] = useState("");
+  const [newAdminPassword, setNewAdminPassword] = useState("");
 
   useEffect(() => {
     const authStatus = sessionStorage.getItem('admin_auth');
@@ -70,7 +71,6 @@ const AdminPanel = () => {
         setActivePageSlug(defaultPage.slug);
         fetchServers(defaultPage.id);
       } else {
-        // إنشاء الصفحة الافتراضية إذا لم تكن موجودة
         const { data: newPage, error: createError } = await supabase
           .from('pages')
           .insert([{ name: "الصفحة الرئيسية", slug: "default" }])
@@ -114,15 +114,56 @@ const AdminPanel = () => {
     }
   };
 
-  const handleLogin = () => {
-    if (passwordInput === "simo") {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('admin_auth', 'true');
-      fetchInitialData();
-      showSuccess("تم تسجيل الدخول بنجاح");
+  const handleLogin = async () => {
+    setIsLoading(true);
+    try {
+      // جلب كلمة المرور من قاعدة البيانات
+      const { data, error } = await supabase
+        .from('site_settings')
+        .select('value')
+        .eq('key', 'admin_password')
+        .single();
+
+      const correctPassword = data?.value || "simo"; // الافتراضية simo إذا لم توجد في القاعدة
+
+      if (passwordInput === correctPassword) {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('admin_auth', 'true');
+        fetchInitialData();
+        showSuccess("تم تسجيل الدخول بنجاح");
+      } else {
+        showError("كلمة المرور غير صحيحة");
+        setPasswordInput("");
+      }
+    } catch (err) {
+      // في حال حدوث خطأ (مثل عدم وجود الجدول بعد)، نستخدم الافتراضية
+      if (passwordInput === "simo") {
+        setIsAuthenticated(true);
+        sessionStorage.setItem('admin_auth', 'true');
+        fetchInitialData();
+      } else {
+        showError("كلمة المرور غير صحيحة");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const updateAdminPassword = async () => {
+    if (!newAdminPassword || newAdminPassword.length < 4) {
+      showError("كلمة المرور يجب أن تكون 4 أحرف على الأقل");
+      return;
+    }
+
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert({ key: 'admin_password', value: newAdminPassword }, { onConflict: 'key' });
+    
+    if (error) {
+      showError("فشل تحديث كلمة المرور");
     } else {
-      showError("كلمة المرور غير صحيحة");
-      setPasswordInput("");
+      showSuccess("تم تغيير كلمة المرور بنجاح");
+      setNewAdminPassword("");
     }
   };
 
@@ -262,7 +303,9 @@ const AdminPanel = () => {
               className="bg-slate-900 border-slate-700 text-white text-center text-lg"
               autoFocus
             />
-            <Button onClick={handleLogin} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold py-6">دخول</Button>
+            <Button onClick={handleLogin} disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold py-6">
+              {isLoading ? <Loader2 className="animate-spin" /> : "دخول"}
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -280,29 +323,50 @@ const AdminPanel = () => {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="md:col-span-1 bg-[#0f172a]/50 border-slate-800 text-white">
-              <CardHeader>
-                <CardTitle className="text-md flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900 border-slate-700 text-xs" />
-                  <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900 border-slate-700 text-xs" />
-                  <Button onClick={addPage} className="w-full bg-indigo-600 text-xs h-8"><Plus size={14} className="ml-1" /> إنشاء صفحة</Button>
-                </div>
-                <div className="border-t border-slate-800 pt-4 space-y-1">
-                  {pages.map(p => (
-                    <div key={p.id} className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${activePageId === p.id ? 'bg-indigo-600' : 'hover:bg-white/5'}`}>
-                      <button onClick={() => { setActivePageId(p.id); setActivePageSlug(p.slug); fetchServers(p.id); }} className="flex-grow text-right font-bold">{p.name}</button>
-                      <div className="flex items-center gap-1">
-                        <button onClick={() => navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`)} className="p-1 hover:text-emerald-400" title="معاينة"><ExternalLink size={14} /></button>
-                        {p.slug !== 'default' && <button onClick={() => deletePage(p.id, p.slug)} className="p-1 hover:text-red-400"><Trash2 size={14} /></button>}
+            <div className="md:col-span-1 space-y-6">
+              <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
+                <CardHeader>
+                  <CardTitle className="text-md flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900 border-slate-700 text-xs" />
+                    <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900 border-slate-700 text-xs" />
+                    <Button onClick={addPage} className="w-full bg-indigo-600 text-xs h-8"><Plus size={14} className="ml-1" /> إنشاء صفحة</Button>
+                  </div>
+                  <div className="border-t border-slate-800 pt-4 space-y-1">
+                    {pages.map(p => (
+                      <div key={p.id} className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${activePageId === p.id ? 'bg-indigo-600' : 'hover:bg-white/5'}`}>
+                        <button onClick={() => { setActivePageId(p.id); setActivePageSlug(p.slug); fetchServers(p.id); }} className="flex-grow text-right font-bold">{p.name}</button>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`)} className="p-1 hover:text-emerald-400" title="معاينة"><ExternalLink size={14} /></button>
+                          {p.slug !== 'default' && <button onClick={() => deletePage(p.id, p.slug)} className="p-1 hover:text-red-400"><Trash2 size={14} /></button>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
+                <CardHeader>
+                  <CardTitle className="text-md flex items-center gap-2"><ShieldCheck size={18} className="text-emerald-500" /> إعدادات الأمان</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-[10px] text-slate-400">تغيير كلمة مرور لوحة التحكم</p>
+                    <Input 
+                      type="password" 
+                      placeholder="كلمة المرور الجديدة" 
+                      value={newAdminPassword} 
+                      onChange={e => setNewAdminPassword(e.target.value)} 
+                      className="bg-slate-900 border-slate-700 text-xs" 
+                    />
+                    <Button onClick={updateAdminPassword} className="w-full bg-emerald-600 hover:bg-emerald-700 text-xs h-8">تحديث كلمة المرور</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
 
             <div className="md:col-span-2 space-y-6">
               <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
