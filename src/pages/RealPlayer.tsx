@@ -55,13 +55,11 @@ export default function RealPlayer() {
   const [isMixedContent, setIsMixedContent] = useState(false);
   const [isNativeMode, setIsNativeMode] = useState(false);
 
+  // إزالة الميتا تاج العام للمرجع لأنه يسبب مشاكل مع يوتيوب
   useEffect(() => {
-    const meta = document.createElement('meta');
-    meta.name = "referrer";
-    meta.content = "no-referrer";
-    document.head.appendChild(meta);
+    // نترك السياسة الافتراضية للمتصفح ونتحكم بها لكل iframe على حدة
     return () => {
-      document.head.removeChild(meta);
+      destroy();
     };
   }, []);
 
@@ -291,9 +289,12 @@ export default function RealPlayer() {
       } else if (ytId) {
         const ifr = document.createElement("iframe");
         const origin = window.location.origin;
-        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&autoplay=1&mute=${shouldUnmute ? "0" : "1"}&controls=1&origin=${encodeURIComponent(origin)}`;
+        // يوتيوب يحتاج لـ origin و referrer ليعمل بشكل صحيح
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&autoplay=1&mute=${shouldUnmute ? "0" : "1"}&controls=1&enablejsapi=1&origin=${encodeURIComponent(origin)}`;
         ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
-        ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+        ifr.allow = "autoplay; fullscreen; picture-in-picture"; ifr.allowFullscreen = true;
+        // يوتيوب يحتاج لمعرفة المرجع (Referrer)
+        ifr.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
         container.appendChild(ifr);
       } else if (url.includes("<iframe")) {
         container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
@@ -301,7 +302,10 @@ export default function RealPlayer() {
         if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
         const ifr = document.createElement("iframe");
-        ifr.src = url; ifr.setAttribute("referrerpolicy", "no-referrer"); ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+        ifr.src = url; 
+        // الروابط العادية نمنع عنها المرجع لحمايتها
+        ifr.setAttribute("referrerpolicy", "no-referrer"); 
+        ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
         ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
         container.appendChild(ifr);
       }
