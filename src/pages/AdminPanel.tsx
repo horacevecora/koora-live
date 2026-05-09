@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, Settings, X, Check, RotateCcw, Lock } from "lucide-react";
+import { Trash2, Edit2, ChevronUp, ChevronDown, Plus, Settings, X, Check, RotateCcw, Lock, Layout, ExternalLink } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 
@@ -14,33 +14,56 @@ interface Server {
   type: string;
 }
 
+interface Page {
+  name: string;
+  slug: string;
+}
+
 const AdminPanel = () => {
   const navigate = useNavigate();
-  const [servers, setServers] = useState<Server[]>([]);
-  const [newName, setNewName] = useState("");
-  const [newUrl, setNewUrl] = useState("");
-  const [editingIndex, setEditingIndex] = useState<number | null>(null);
   
   // نظام الحماية
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [passwordInput, setPasswordInput] = useState("");
 
-  useEffect(() => {
-    // التحقق مما إذا كان المستخدم قد سجل دخوله مسبقاً في هذه الجلسة
-    const authStatus = sessionStorage.getItem('admin_auth');
-    if (authStatus === 'true') {
-      setIsAuthenticated(true);
-    }
+  // إدارة الصفحات
+  const [pages, setPages] = useState<Page[]>([]);
+  const [activePageSlug, setActivePageSlug] = useState("default");
+  const [newPageName, setNewPageName] = useState("");
+  const [newPageSlug, setNewPageSlug] = useState("");
 
-    const saved = localStorage.getItem('player_servers');
-    if (saved) {
-      setServers(JSON.parse(saved));
+  // إدارة القنوات
+  const [servers, setServers] = useState<Server[]>([]);
+  const [newName, setNewName] = useState("");
+  const [newUrl, setNewUrl] = useState("");
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+
+  useEffect(() => {
+    const authStatus = sessionStorage.getItem('admin_auth');
+    if (authStatus === 'true') setIsAuthenticated(true);
+
+    // تحميل قائمة الصفحات
+    const savedPages = localStorage.getItem('app_pages');
+    if (savedPages) {
+      setPages(JSON.parse(savedPages));
     } else {
-      const defaultServers = [{"name":"سيرفر 1","url":"https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1","type":"iframe"}];
-      setServers(defaultServers);
-      localStorage.setItem('player_servers', JSON.stringify(defaultServers));
+      const initialPages = [{ name: "الصفحة الرئيسية", slug: "default" }];
+      setPages(initialPages);
+      localStorage.setItem('app_pages', JSON.stringify(initialPages));
     }
   }, []);
+
+  // تحميل قنوات الصفحة النشطة
+  useEffect(() => {
+    const storageKey = `servers_${activePageSlug}`;
+    const savedServers = localStorage.getItem(storageKey);
+    if (savedServers) {
+      setServers(JSON.parse(savedServers));
+    } else {
+      setServers([]);
+    }
+    cancelEdit();
+  }, [activePageSlug]);
 
   const handleLogin = () => {
     if (passwordInput === "simo") {
@@ -53,9 +76,35 @@ const AdminPanel = () => {
     }
   };
 
+  // وظائف الصفحات
+  const addPage = () => {
+    if (!newPageName || !newPageSlug) return;
+    if (pages.find(p => p.slug === newPageSlug)) {
+      showError("هذا المعرف (Slug) مستخدم بالفعل");
+      return;
+    }
+    const updated = [...pages, { name: newPageName, slug: newPageSlug }];
+    setPages(updated);
+    localStorage.setItem('app_pages', JSON.stringify(updated));
+    setNewPageName("");
+    setNewPageSlug("");
+    showSuccess("تم إنشاء الصفحة بنجاح");
+  };
+
+  const deletePage = (slug: string) => {
+    if (slug === 'default') return;
+    const updated = pages.filter(p => p.slug !== slug);
+    setPages(updated);
+    localStorage.setItem('app_pages', JSON.stringify(updated));
+    localStorage.removeItem(`servers_${slug}`);
+    if (activePageSlug === slug) setActivePageSlug('default');
+    showSuccess("تم حذف الصفحة");
+  };
+
+  // وظائف القنوات
   const saveServers = (updated: Server[]) => {
     setServers(updated);
-    localStorage.setItem('player_servers', JSON.stringify(updated));
+    localStorage.setItem(`servers_${activePageSlug}`, JSON.stringify(updated));
   };
 
   const handleSubmit = () => {
@@ -67,13 +116,12 @@ const AdminPanel = () => {
       updated[editingIndex] = { name: newName, url: newUrl, type };
       saveServers(updated);
       setEditingIndex(null);
-      showSuccess("تم تحديث القناة بنجاح");
+      showSuccess("تم تحديث القناة");
     } else {
       const updated = [...servers, { name: newName, url: newUrl, type }];
       saveServers(updated);
-      showSuccess("تمت إضافة القناة بنجاح");
+      showSuccess("تمت إضافة القناة");
     }
-    
     setNewName("");
     setNewUrl("");
   };
@@ -83,7 +131,6 @@ const AdminPanel = () => {
     setNewName(server.name);
     setNewUrl(server.url);
     setEditingIndex(index);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const cancelEdit = () => {
@@ -104,11 +151,8 @@ const AdminPanel = () => {
     if (target < 0 || target >= updated.length) return;
     [updated[index], updated[target]] = [updated[target], updated[index]];
     saveServers(updated);
-    if (editingIndex === index) setEditingIndex(target);
-    else if (editingIndex === target) setEditingIndex(index);
   };
 
-  // واجهة تسجيل الدخول
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans" dir="rtl">
@@ -118,7 +162,6 @@ const AdminPanel = () => {
               <Lock className="text-indigo-500" size={24} />
             </div>
             <CardTitle className="text-2xl font-black">منطقة محظورة</CardTitle>
-            <p className="text-slate-400 text-sm">يرجى إدخال كلمة المرور للوصول للوحة التحكم</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input 
@@ -127,137 +170,82 @@ const AdminPanel = () => {
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleLogin()}
-              className="bg-slate-900 border-slate-700 text-white text-center text-lg tracking-widest focus:ring-indigo-500"
+              className="bg-slate-900 border-slate-700 text-white text-center text-lg"
               autoFocus
             />
-            <Button 
-              onClick={handleLogin}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-6 rounded-xl"
-            >
-              دخول
-            </Button>
-            <Button 
-              variant="ghost"
-              onClick={() => navigate('/real.html')}
-              className="w-full text-slate-500 hover:text-white"
-            >
-              العودة للمشاهدة
-            </Button>
+            <Button onClick={handleLogin} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold py-6">دخول</Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
-  // واجهة لوحة التحكم (تظهر فقط بعد تسجيل الدخول)
   return (
     <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans" dir="rtl">
-      <div className="max-w-4xl mx-auto space-y-8">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2 bg-slate-900 p-2 rounded-lg border border-slate-800">
-             <span className="text-slate-400 text-sm px-2">لوحة التحكم</span>
-             <div className="bg-orange-500 p-1.5 rounded-md">
-               <Settings size={18} className="text-white" />
-             </div>
+      <div className="max-w-5xl mx-auto space-y-8">
+        
+        {/* قسم إدارة الصفحات */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Card className="md:col-span-1 bg-[#0f172a]/50 border-slate-800 text-white">
+            <CardHeader>
+              <CardTitle className="text-md flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Input placeholder="اسم الصفحة (مثلاً: رياضة)" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900 border-slate-700 text-xs" />
+                <Input placeholder="المعرف (مثلاً: sports)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900 border-slate-700 text-xs" />
+                <Button onClick={addPage} className="w-full bg-indigo-600 text-xs h-8"><Plus size={14} className="ml-1" /> إنشاء صفحة</Button>
+              </div>
+              <div className="border-t border-slate-800 pt-4 space-y-1">
+                {pages.map(p => (
+                  <div key={p.slug} className={`flex items-center justify-between p-2 rounded-lg text-xs transition-all ${activePageSlug === p.slug ? 'bg-indigo-600' : 'hover:bg-white/5'}`}>
+                    <button onClick={() => setActivePageSlug(p.slug)} className="flex-grow text-right font-bold">{p.name}</button>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`)} className="p-1 hover:text-emerald-400" title="معاينة"><ExternalLink size={14} /></button>
+                      {p.slug !== 'default' && <button onClick={() => deletePage(p.slug)} className="p-1 hover:text-red-400"><Trash2 size={14} /></button>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* قسم إدارة القنوات للصفحة المختارة */}
+          <div className="md:col-span-2 space-y-6">
+            <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">تعديل قنوات: <span className="text-indigo-400">{pages.find(p => p.slug === activePageSlug)?.name}</span></CardTitle>
+                {editingIndex !== null && <Button variant="ghost" size="sm" onClick={cancelEdit} className="text-xs"><RotateCcw size={14} className="ml-1" /> إلغاء</Button>}
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex flex-col md:flex-row gap-2">
+                  <Input placeholder="اسم القناة" value={newName} onChange={e => setNewName(e.target.value)} className="bg-slate-900 border-slate-700" />
+                  <Input placeholder="الرابط" value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900 border-slate-700" />
+                  <Button onClick={handleSubmit} className="bg-indigo-600 font-bold">{editingIndex !== null ? 'تحديث' : 'إضافة'}</Button>
+                </div>
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                  {servers.map((s, i) => (
+                    <div key={i} className="flex items-center justify-between p-3 bg-slate-900/80 border border-slate-800 rounded-xl text-sm">
+                      <div className="truncate ml-4">
+                        <div className="font-bold">{s.name}</div>
+                        <div className="text-[10px] text-slate-500 truncate">{s.url}</div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button onClick={() => deleteChannel(i)} className="p-1.5 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
+                        <button onClick={() => startEdit(i)} className="p-1.5 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
+                        <button onClick={() => moveChannel(i, 'up')} className="p-1.5 text-slate-500 hover:text-white"><ChevronUp size={16} /></button>
+                        <button onClick={() => moveChannel(i, 'down')} className="p-1.5 text-slate-500 hover:text-white"><ChevronDown size={16} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => { sessionStorage.removeItem('admin_auth'); setIsAuthenticated(false); }}
-            className="border-slate-800 text-slate-400 hover:bg-red-900/20 hover:text-red-500"
-          >
-            تسجيل الخروج
-          </Button>
         </div>
 
-        <Card className={`bg-[#0f172a]/50 border-slate-800 text-white transition-all duration-500 ${editingIndex !== null ? 'ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/20' : ''}`}>
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle className="text-lg flex items-center gap-2">
-              {editingIndex !== null ? (
-                <>تعديل القناة <Edit2 size={18} className="text-indigo-400" /></>
-              ) : (
-                <>إضافة قناة <Plus size={18} className="text-emerald-500" /></>
-              )}
-            </CardTitle>
-            {editingIndex !== null && (
-              <Button variant="ghost" size="sm" onClick={cancelEdit} className="text-slate-400 hover:text-white">
-                <RotateCcw size={16} className="ml-2" /> إلغاء التعديل
-              </Button>
-            )}
-          </CardHeader>
-          <CardContent className="flex flex-col md:flex-row gap-4">
-            <Input 
-              placeholder="اسم القناة" 
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              className="bg-slate-900 border-slate-700 text-white focus:ring-indigo-500"
-            />
-            <Input 
-              placeholder="رابط الـ iframe أو m3u8 أو ts" 
-              value={newUrl}
-              onChange={(e) => setNewUrl(e.target.value)}
-              className="bg-slate-900 border-slate-700 text-white focus:ring-indigo-500"
-            />
-            <Button 
-              onClick={handleSubmit} 
-              className={`${editingIndex !== null ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-emerald-600 hover:bg-emerald-700'} text-white min-w-[120px] font-bold`}
-            >
-              {editingIndex !== null ? <><Check size={18} className="ml-2" /> تحديث</> : <><Plus size={18} className="ml-2" /> إضافة</>}
-            </Button>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              القنوات ({servers.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {servers.map((server, index) => (
-              <div 
-                key={index} 
-                className={`flex items-center justify-between p-4 rounded-xl border transition-all ${editingIndex === index ? 'bg-indigo-900/20 border-indigo-500/50' : 'bg-slate-900/80 border-slate-800'}`}
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-sm ${editingIndex === index ? 'bg-indigo-600 text-white' : 'bg-red-900/30 text-red-500'}`}>
-                    {index + 1}
-                  </div>
-                  <div className="overflow-hidden">
-                    <div className="font-bold truncate">{server.name}</div>
-                    <div className="text-xs text-slate-500 truncate max-w-[150px] md:max-w-md">{server.url}</div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1 md:gap-2 shrink-0">
-                  <button onClick={() => deleteChannel(index)} className="p-2 text-slate-500 hover:text-red-500 transition-colors" title="حذف">
-                    <Trash2 size={18} />
-                  </button>
-                  <button onClick={() => startEdit(index)} className={`p-2 transition-colors ${editingIndex === index ? 'text-indigo-400' : 'text-slate-500 hover:text-indigo-400'}`} title="تعديل">
-                    <Edit2 size={18} />
-                  </button>
-                  <button onClick={() => moveChannel(index, 'down')} className="p-2 text-slate-500 hover:text-white transition-colors" title="تحريك لأسفل">
-                    <ChevronDown size={18} />
-                  </button>
-                  <button onClick={() => moveChannel(index, 'up')} className="p-2 text-slate-500 hover:text-white transition-colors" title="تحريك لأعلى">
-                    <ChevronUp size={18} />
-                  </button>
-                </div>
-              </div>
-            ))}
-            {servers.length === 0 && (
-              <div className="text-center py-10 text-slate-500 italic">لا توجد قنوات مضافة حالياً</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-center pt-10">
-          <Button 
-            onClick={() => navigate('/real.html')}
-            className="bg-red-600 hover:bg-red-700 text-white px-10 py-6 rounded-2xl text-lg font-bold flex items-center gap-2 shadow-xl shadow-red-900/20"
-          >
-            <X size={20} />
-            إغلاق التحكم والعودة للمشاهدة
-          </Button>
+        <div className="flex justify-center">
+          <Button onClick={() => navigate('/real.html')} className="bg-red-600 hover:bg-red-700 px-10 py-6 rounded-2xl font-bold">إغلاق والعودة للمشاهدة</Button>
         </div>
       </div>
     </div>

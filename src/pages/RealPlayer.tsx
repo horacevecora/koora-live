@@ -9,7 +9,7 @@ import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
 import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
 
@@ -23,6 +23,13 @@ interface Server {
 
 export default function RealPlayer() {
   const navigate = useNavigate();
+  const { slug } = useParams();
+  const location = useLocation();
+  
+  // تحديد مفتاح التخزين بناءً على الرابط
+  const pageKey = slug || (location.pathname === '/real.html' ? 'default' : 'unknown');
+  const storageKey = `servers_${pageKey}`;
+
   const containerRef = useRef<HTMLDivElement>(null);
   const plyrRef = useRef<Plyr | null>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -39,9 +46,9 @@ export default function RealPlayer() {
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  /* ---- تحميل السيرفرات من localStorage ---- */
+  /* ---- تحميل السيرفرات بناءً على الصفحة الحالية ---- */
   useEffect(() => {
-    const saved = localStorage.getItem('player_servers');
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       const parsed = JSON.parse(saved);
       setServers(parsed);
@@ -49,6 +56,7 @@ export default function RealPlayer() {
         buildPlayer(parsed[0], false, false);
       }
     } else {
+      // سيرفر افتراضي إذا كانت الصفحة فارغة
       const defaultServers: Server[] = [
         {
           name: "سيرفر 1 – beIN HD1",
@@ -63,7 +71,7 @@ export default function RealPlayer() {
     return () => {
       destroy();
     };
-  }, []);
+  }, [storageKey]);
 
   /* ---- تنظيف المشغّل القديم ---- */
   const destroy = useCallback(() => {
