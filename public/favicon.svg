@@ -1,53 +1,39 @@
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <!-- تدرج الخلفية الخضراء -->
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#00ff88" />
-      <stop offset="100%" stop-color="#00ad5d" />
-    </linearGradient>
-    
-    <!-- ظل الكرة -->
-    <radialGradient id="ballShadow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-      <stop offset="0%" stop-color="black" stop-opacity="0.4" />
-      <stop offset="100%" stop-color="black" stop-opacity="0" />
-    </radialGradient>
-
-    <!-- لمعان الكرة -->
-    <linearGradient id="ballGloss" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="white" stop-opacity="0.4" />
-      <stop offset="50%" stop-color="white" stop-opacity="0" />
-    </linearGradient>
-  </defs>
-
-  <!-- الخلفية (مربع بزوايا مستديرة - نمط التطبيقات) -->
-  <rect width="512" height="512" rx="100" fill="url(#bgGradient)" />
+  <!-- الخلفية الخضراء الزاهية -->
+  <rect width="512" height="512" rx="120" fill="#00e676"/>
   
-  <!-- ظل تحت الكرة -->
-  <ellipse cx="256" cy="420" rx="150" ry="40" fill="url(#ballShadow)" />
-
-  <!-- جسم الكرة الرئيسي -->
-  <circle cx="256" cy="240" r="180" fill="white" />
+  <!-- جسم الكرة الأبيض -->
+  <circle cx="256" cy="256" r="160" fill="white"/>
   
-  <!-- المضلعات السوداء بتوزيع 3D -->
+  <!-- المضلعات السوداء الكلاسيكية (توزيع حقيقي) -->
   <g fill="#1a1a1a">
-    <!-- مضلع مركزي -->
-    <path d="M256 140 L310 180 V240 L256 280 L202 240 V180 Z" />
+    <!-- المضلع المركزي -->
+    <path d="M256 180L305 215V275L256 310L207 275V215L256 180Z" />
     
-    <!-- مضلعات جانبية منحنية لإعطاء شكل كروي -->
-    <path d="M256 60 C280 60 300 70 320 85 L290 125 L222 125 L192 85 C212 70 232 60 256 60 Z" />
-    <path d="M410 180 L370 210 L370 270 L410 300 C425 280 435 255 435 230 C435 210 425 195 410 180 Z" />
-    <path d="M102 180 L142 210 L142 270 L102 300 C87 280 77 255 77 230 C77 210 87 195 102 180 Z" />
-    <path d="M256 420 C230 420 210 410 192 395 L222 355 L290 355 L320 395 C300 410 280 420 256 420 Z" />
+    <!-- المضلعات المحيطة المنحنية -->
+    <path d="M256 96L290 130H222L256 96Z" />
+    <path d="M416 256L380 220V292L416 256Z" />
+    <path d="M96 256L132 292V220L96 256Z" />
+    <path d="M256 416L222 382H290L256 416Z" />
+    
+    <!-- مضلعات الزوايا -->
+    <path d="M370 130L400 160L350 175L370 130Z" />
+    <path d="M142 130L112 160L162 175L142 130Z" />
+    <path d="M370 382L400 352L350 337L370 382Z" />
+    <path d="M142 382L112 352L162 337L142 382Z" />
   </g>
-
-  <!-- خطوط الربط (خفيفة جداً) -->
-  <g stroke="#cccccc" stroke-width="2">
-    <circle cx="256" cy="240" r="180" fill="none" stroke="#000000" stroke-opacity="0.1" stroke-width="4" />
-  </g>
-
-  <!-- تأثير اللمعان العلوي (Glossy) -->
-  <circle cx="256" cy="240" r="180" fill="url(#ballGloss)" />
   
-  <!-- نقطة ضوء بيضاء صغيرة -->
-  <circle cx="180" cy="150" r="30" fill="white" fill-opacity="0.3" />
+  <!-- خطوط الربط لإعطاء شكل كروي -->
+  <g stroke="#1a1a1a" stroke-width="4" stroke-opacity="0.1">
+    <circle cx="256" cy="256" r="160" fill="none" />
+  </g>
+  
+  <!-- ظل خفيف تحت الكرة لإعطاء عمق -->
+  <defs>
+    <radialGradient id="ballShadow" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+      <stop offset="85%" stop-color="black" stop-opacity="0"/>
+      <stop offset="100%" stop-color="black" stop-opacity="0.15"/>
+    </radialGradient>
+  </defs>
+  <circle cx="256" cy="256" r="160" fill="url(#ballShadow)"/>
 </svg>
