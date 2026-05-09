@@ -45,7 +45,7 @@ export default function RealPlayer() {
       const parsed = JSON.parse(saved);
       setServers(parsed);
       if (parsed.length > 0) {
-        buildPlayer(parsed[0], false, false); // المحاولة الأولى قد تكون صامتة بسبب سياسة المتصفح
+        buildPlayer(parsed[0], false, false);
       }
     } else {
       const defaultServers: Server[] = [
@@ -120,8 +120,9 @@ export default function RealPlayer() {
       
       const url = server.url.trim();
       
-      const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000");
-      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort;
+      // تحسين التعرف على روابط IPTV والمنصات
+      const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
+      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || / \/\d+$/.test(url);
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
       const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS;
 
@@ -131,7 +132,7 @@ export default function RealPlayer() {
         video.playsInline = true;
         video.autoplay = true;
         video.controls = true;
-        video.muted = !shouldUnmute; // محاولة التشغيل بالصوت إذا كان هناك تفاعل سابق
+        video.muted = !shouldUnmute;
         video.className = "w-full h-full bg-black object-contain live-video-element";
         video.setAttribute("crossorigin", "anonymous");
         video.setAttribute("referrerpolicy", "no-referrer");
@@ -142,7 +143,6 @@ export default function RealPlayer() {
             setLoading(false);
             if (video.muted) setShowUnmuteHint(true);
           }).catch(() => {
-            // إذا فشل التشغيل بالصوت، نجرب صامتاً
             video.muted = true;
             video.play().then(() => {
               setLoading(false);
@@ -162,9 +162,13 @@ export default function RealPlayer() {
             const player = mpegts.createPlayer({ 
               type: 'mpegts', isLive: true, url: url, cors: true
             }, {
-              enableWorker: true, enableStashBuffer: true, stashInitialSize: 3072,
-              liveBufferLatencyChasing: true, liveBufferLatencyMaxLatency: 3,
-              autoCleanupSourceBuffer: true, lazyLoad: false
+              enableWorker: true, 
+              enableStashBuffer: true, 
+              stashInitialSize: 3072,
+              liveBufferLatencyChasing: true, 
+              liveBufferLatencyMaxLatency: 3,
+              autoCleanupSourceBuffer: true, 
+              lazyLoad: false
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
@@ -293,10 +297,10 @@ export default function RealPlayer() {
   const switchServer = useCallback(
     (index: number) => {
       if (servers[index]) {
-        setHasInteracted(true); // بمجرد النقر على أي سيرفر، نعتبر أن المستخدم تفاعل
+        setHasInteracted(true);
         setRetryCount(0);
         setActiveIndex(index);
-        buildPlayer(servers[index], false, true); // نطلب فك الكتم لأن المستخدم نقر للتو
+        buildPlayer(servers[index], false, true);
       }
     },
     [buildPlayer, servers]
