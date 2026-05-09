@@ -371,8 +371,8 @@ export default function RealPlayer() {
         </button>
       </div>
 
-      {/* الزر الخفي في موضع مستقل بعيداً لليمين (left-80) لضمان عدم تداخله */}
-      <div className="absolute top-4 left-80 z-50">
+      {/* الزر الخفي تم نقله إلى الموقع السابق لزر التكبير (left-12) */}
+      <div className="absolute top-4 left-12 z-50">
         <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
           <Settings size={8} />
         </button>
