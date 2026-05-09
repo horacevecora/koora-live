@@ -298,8 +298,8 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       } else if (isFB) {
         const ifr = document.createElement("iframe");
-        // استخدام رابط تضمين فيسبوك المطور مع تعطيل التكيف التلقائي لمنع الزوم
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&show_captions=0&autoplay=1&mute=${muteParam}&allowfullscreen=true&controls=1&adapt_to_wrapper=false`;
+        // استخدام رابط تضمين فيسبوك المطور مع تفعيل adapt_to_wrapper لضمان ظهور كامل الأدوات
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&show_captions=0&autoplay=1&mute=${muteParam}&allowfullscreen=true&controls=1&adapt_to_wrapper=true`;
         ifr.style.width = "100%"; 
         ifr.style.height = "100%"; 
         ifr.style.border = "none";
@@ -420,7 +420,7 @@ export default function RealPlayer() {
         <div 
           className={cn(
             "relative w-full bg-black rounded-b-2xl overflow-hidden transition-all duration-500",
-            isFBActive ? "min-h-[500px] h-auto" : "aspect-video"
+            isFBActive ? "min-h-[500px] h-auto pb-12" : "aspect-video"
           )}
           onClick={handleUnmute}
         >
