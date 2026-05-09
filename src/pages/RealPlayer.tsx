@@ -142,12 +142,9 @@ export default function RealPlayer() {
       
       const url = server.url.trim();
       
-      // تحسين التعرف على روابط IPTV و TS
       const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
       const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || /\/\d+$/.test(url.split('?')[0]);
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      
-      // روابط البث الخام (Raw Streams) تشمل الآن الروابط التي تحتوي على علامات استفهام إذا كانت TS
       const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS);
 
       /* 1. روابط M3U8 المباشرة */
@@ -288,7 +285,8 @@ export default function RealPlayer() {
       if (kickInfo) {
         const ifr = document.createElement("iframe");
         const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
-        ifr.src = `https://player.kick.com/${embedPath}?autoplay=${autoParam}&muted=${shouldUnmute ? 'false' : 'true'}`;
+        // تحسين رابط Kick للتشغيل التلقائي مع الصوت
+        ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=${shouldUnmute ? 'false' : 'true'}`;
         ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
         ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
         container.appendChild(ifr);
