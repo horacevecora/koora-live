@@ -342,7 +342,7 @@ const AdminPanel = () => {
               <CardContent className="space-y-4">
                 <div className="flex flex-col md:flex-row gap-2">
                   <Input placeholder="اسم القناة" value={newName} onChange={e => setNewName(e.target.value)} className="bg-slate-900 border-slate-700" />
-                  <Input placeholder="الرابط" value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900 border-slate-700" />
+                  <Input placeholder="الرابط أو كود iframe" value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900 border-slate-700" />
                   <Button onClick={handleSubmit} className="bg-indigo-600 font-bold">{editingId ? 'تحديث' : 'إضافة'}</Button>
                 </div>
                 <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
