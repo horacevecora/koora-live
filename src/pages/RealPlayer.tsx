@@ -8,8 +8,8 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight, Home } from "lucide-react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, ArrowDownRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 /* ──────────────── النوعيات ──────────────── */
 
@@ -21,16 +21,8 @@ interface Server {
   type: ServerType;
 }
 
-interface CustomPage {
-  id: string;
-  title: string;
-  slug: string;
-  servers: Server[];
-}
-
 export default function RealPlayer() {
   const navigate = useNavigate();
-  const { slug } = useParams(); // الحصول على الرابط المخصص إذا وجد
   const containerRef = useRef<HTMLDivElement>(null);
   const plyrRef = useRef<Plyr | null>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -39,7 +31,6 @@ export default function RealPlayer() {
   const lastTime = useRef<number>(0);
 
   const [servers, setServers] = useState<Server[]>([]);
-  const [pageTitle, setPageTitle] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -48,45 +39,31 @@ export default function RealPlayer() {
   const [isCodecUnsupported, setIsCodecUnsupported] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
 
-  /* ---- تحميل البيانات بناءً على الرابط ---- */
+  /* ---- تحميل السيرفرات من localStorage ---- */
   useEffect(() => {
-    let targetServers: Server[] = [];
-    
-    if (slug) {
-      // البحث في الصفحات المخصصة
-      const savedPages = localStorage.getItem('custom_pages');
-      if (savedPages) {
-        const pages: CustomPage[] = JSON.parse(savedPages);
-        const page = pages.find(p => p.slug === slug);
-        if (page) {
-          targetServers = page.servers;
-          setPageTitle(page.title);
-        } else {
-          setError("عذراً، هذه الصفحة غير موجودة");
-          setLoading(false);
-          return;
+    const saved = localStorage.getItem('player_servers');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setServers(parsed);
+      if (parsed.length > 0) {
+        buildPlayer(parsed[0], false, false);
+      }
+    } else {
+      const defaultServers: Server[] = [
+        {
+          name: "سيرفر 1 – beIN HD1",
+          url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1",
+          type: "iframe",
         }
-      }
-    } else {
-      // تحميل السيرفرات الافتراضية
-      const saved = localStorage.getItem('player_servers');
-      if (saved) {
-        targetServers = JSON.parse(saved);
-      }
-    }
-
-    if (targetServers.length > 0) {
-      setServers(targetServers);
-      buildPlayer(targetServers[0], false, false);
-    } else {
-      setError("لا توجد قنوات مضافة لهذه الصفحة");
-      setLoading(false);
+      ];
+      setServers(defaultServers);
+      buildPlayer(defaultServers[0], false, false);
     }
 
     return () => {
       destroy();
     };
-  }, [slug]);
+  }, []);
 
   /* ---- تنظيف المشغّل القديم ---- */
   const destroy = useCallback(() => {
@@ -303,6 +280,7 @@ export default function RealPlayer() {
       const isFB = isFacebookUrl(url);
 
       const muteParam = shouldUnmute ? "0" : "1";
+      const autoParam = "1";
 
       if (kickInfo) {
         const ifr = document.createElement("iframe");
@@ -321,11 +299,16 @@ export default function RealPlayer() {
         const ifr = document.createElement("iframe");
         const fbMute = shouldUnmute ? "0" : "1";
         ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=true&mute=${fbMute}&allowfullscreen=true&adapt_to_wrapper=true`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
-        ifr.style.position = "absolute"; ifr.style.top = "0"; ifr.style.left = "0";
+        ifr.style.width = "100%"; 
+        ifr.style.height = "100%"; 
+        ifr.style.border = "none";
+        ifr.style.position = "absolute";
+        ifr.style.top = "0";
+        ifr.style.left = "0";
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"; 
         ifr.allowFullscreen = true;
         container.appendChild(ifr);
+        // إظهار تنبيه الصوت لفيسبوك بعد قليل من التحميل
         setTimeout(() => setShowUnmuteHint(true), 2000);
       } else if (ytId) {
         const wrapper = document.createElement("div");
@@ -343,8 +326,11 @@ export default function RealPlayer() {
         const ifr = document.createElement("iframe");
         ifr.src = url; 
         ifr.setAttribute("referrerpolicy", "no-referrer");
-        ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
+        ifr.allow = "autoplay; fullscreen"; 
+        ifr.allowFullscreen = true;
+        ifr.style.width = "100%"; 
+        ifr.style.height = "100%"; 
+        ifr.style.border = "none";
         container.appendChild(ifr);
       }
       
@@ -398,24 +384,13 @@ export default function RealPlayer() {
 
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
-      {/* شريط العنوان العلوي (يظهر فقط في الصفحات المخصصة) */}
-      <div className="absolute top-4 left-6 right-6 flex justify-between items-center z-50">
-        <div className="flex items-center gap-4">
-          <button onClick={() => navigate('/')} className="text-white/40 hover:text-white p-2 bg-white/5 rounded-full transition-colors">
-            <Home size={20} />
-          </button>
-          {pageTitle && (
-            <h2 className="text-white font-black text-lg md:text-xl drop-shadow-lg" dir="rtl">
-              {pageTitle}
-            </h2>
-          )}
-        </div>
-        <div className="flex gap-4 items-center">
+      <div className="absolute top-4 left-12 right-12 flex justify-between items-center z-50 pointer-events-none">
+        <div className="flex gap-6 items-center pointer-events-auto">
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
           </button>
           <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10">
-            <Maximize size={24} />
+            <Maximize size={28} />
           </button>
         </div>
       </div>
@@ -458,6 +433,7 @@ export default function RealPlayer() {
             </div>
           )}
 
+          {/* تنبيه الصوت العام */}
           {showUnmuteHint && !loading && !isCurrentFB && (
             <div 
               className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors"
@@ -468,6 +444,7 @@ export default function RealPlayer() {
             </div>
           )}
 
+          {/* تنبيه الصوت المخصص لفيسبوك */}
           {showUnmuteHint && !loading && isCurrentFB && (
             <div className="absolute bottom-12 right-4 z-30 flex flex-col items-end pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-700">
               <div className="bg-indigo-600 text-white px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 mb-1 border border-white/20">
@@ -486,7 +463,11 @@ export default function RealPlayer() {
                 <AlertTriangle className="text-red-500 mx-auto mb-2" size={32} />
                 <p className="text-red-400 font-black text-sm">{error}</p>
               </div>
-              <button onClick={() => navigate('/')} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold">العودة للرئيسية</button>
+              {!isCodecUnsupported && (
+                <button onClick={() => switchServer(activeIndex)} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 mx-auto">
+                  <RefreshCw size={18} /> إعادة المحاولة
+                </button>
+              )}
             </div>
           )}
         </div>
