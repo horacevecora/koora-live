@@ -178,6 +178,7 @@ export default function RealPlayer() {
               // إذا كان الخطأ بسبب الكوديك، نحاول التشغيل الأصلي فوراً
               if (detail === mpegts.ErrorDetails.MEDIA_MSE_ERROR || type.includes('unsupported')) {
                 console.log("Codec unsupported in MSE, trying Native fallback...");
+                setIsCodecUnsupported(true);
                 buildPlayer(server, true); // إعادة المحاولة بنظام Native
                 return;
               }
@@ -196,7 +197,7 @@ export default function RealPlayer() {
               setRetryCount(0);
             }).catch((e) => {
               console.error("Play failed, trying Native:", e);
-              buildPlayer(server, true);
+              if (e.name !== 'AbortError') buildPlayer(server, true);
             });
           } catch (e) {
             buildPlayer(server, true);
