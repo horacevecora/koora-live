@@ -468,10 +468,13 @@ const AdminPanel = () => {
                   {editingId && <Button variant="ghost" size="sm" onClick={cancelEdit} className="text-xs"><RotateCcw size={14} className="ml-1" /> إلغاء</Button>}
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex flex-col md:flex-row gap-2">
-                    <Input placeholder="اسم القناة" value={newName} onChange={e => setNewName(e.target.value)} className="bg-slate-900 border-slate-700" />
-                    <Input placeholder="الرابط" value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900 border-slate-700" />
-                    <Button onClick={handleSubmit} className="bg-indigo-600 font-bold">{editingId ? 'تحديث' : 'إضافة'}</Button>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex flex-col md:flex-row gap-2">
+                      <Input placeholder="اسم القناة" value={newName} onChange={e => setNewName(e.target.value)} className="bg-slate-900 border-slate-700" />
+                      <Input placeholder="رابط Iframe او m3u8 او ts او يوتيوب او فيس بوك..." value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900 border-slate-700" />
+                      <Button onClick={handleSubmit} className="bg-indigo-600 font-bold">{editingId ? 'تحديث' : 'إضافة'}</Button>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mr-1">يدعم: Iframe, m3u8, ts, YouTube, Facebook, Twitch, Kick, Raw Streams</p>
                   </div>
                   <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
                     {servers.map((s, i) => (
