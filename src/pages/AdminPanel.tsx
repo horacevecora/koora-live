@@ -67,12 +67,6 @@ const AdminPanel = () => {
     }
   };
 
-  const handleLogout = () => {
-    setIsUnlocked(false);
-    localStorage.removeItem('admin_unlocked');
-    navigate('/');
-  };
-
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
@@ -154,9 +148,20 @@ const AdminPanel = () => {
     showSuccess("تم نسخ الرابط");
   };
 
+  const detectType = (url: string): string => {
+    const lowUrl = url.toLowerCase();
+    if (lowUrl.includes('.m3u8')) return 'm3u8';
+    if (lowUrl.includes('.ts') || lowUrl.includes('type=http')) return 'ts';
+    if (lowUrl.includes('youtube.com') || lowUrl.includes('youtu.be')) return 'youtube';
+    if (lowUrl.includes('facebook.com') || lowUrl.includes('fb.watch')) return 'facebook';
+    if (lowUrl.includes('twitch.tv')) return 'twitch';
+    if (lowUrl.includes('kick.com')) return 'kick';
+    return 'iframe';
+  };
+
   const handleSubmit = async () => {
     if (!newName || !newUrl || !activePageId) return;
-    const type = newUrl.includes('.m3u8') ? 'm3u8' : 'iframe';
+    const type = detectType(newUrl);
     
     if (editingId) {
       const { error } = await supabase
@@ -164,7 +169,7 @@ const AdminPanel = () => {
         .update({ name: newName, url: newUrl, type })
         .eq('id', editingId);
       
-      if (error) showError("فشل التحديث");
+      if (error) showError(`فشل التحديث: ${error.message}`);
       else {
         showSuccess("تم التحديث");
         fetchServers(activePageId);
@@ -183,7 +188,7 @@ const AdminPanel = () => {
           sort_order: servers.length 
         }]);
       
-      if (error) showError("فشل الإضافة");
+      if (error) showError(`فشل الإضافة: ${error.message}`);
       else {
         showSuccess("تمت الإضافة");
         fetchServers(activePageId);
@@ -194,7 +199,11 @@ const AdminPanel = () => {
   };
 
   const handleBulkAdd = async () => {
-    if (!bulkInput || !activePageId) return;
+    if (!bulkInput || !activePageId) {
+      showError("يرجى إدخال البيانات واختيار صفحة");
+      return;
+    }
+    
     const lines = bulkInput.split('\n').filter(line => line.trim() !== '');
     const newServers = lines.map((line, index) => {
       const parts = line.split('=');
@@ -204,7 +213,7 @@ const AdminPanel = () => {
         return {
           name,
           url,
-          type: url.includes('.m3u8') ? 'm3u8' : 'iframe',
+          type: detectType(url),
           page_id: activePageId,
           sort_order: servers.length + index
         };
@@ -214,12 +223,16 @@ const AdminPanel = () => {
 
     if (newServers.length > 0) {
       const { error } = await supabase.from('servers').insert(newServers);
-      if (error) showError("فشل الإضافة الجماعية");
-      else {
-        showSuccess(`تم إضافة ${newServers.length} قناة`);
+      if (error) {
+        showError(`فشل الإضافة الجماعية: ${error.message}`);
+        console.error("Bulk add error:", error);
+      } else {
+        showSuccess(`تم إضافة ${newServers.length} قناة بنجاح`);
         fetchServers(activePageId);
         setBulkInput("");
       }
+    } else {
+      showError("لم يتم العثور على بيانات صالحة. تأكد من استخدام صيغة: الاسم = الرابط");
     }
   };
 
@@ -341,7 +354,7 @@ const AdminPanel = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea 
-                  placeholder={"Server 1 = https://example.com/live.m3u8\nServer 2 = https://example.com/embed\n..."} 
+                  placeholder={"Quran Live 24h/24h (twitch.tv) = https://www.twitch.tv/quran_live24\nAljazeera News Arabic (Youtube LIVE) = https://www.youtube.com/watch?v=N8xxOD0nT1Y\n..."} 
                   value={bulkInput}
                   onChange={(e) => setBulkInput(e.target.value)}
                   className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right"
