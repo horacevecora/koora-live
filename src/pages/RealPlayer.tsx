@@ -10,6 +10,7 @@ import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
 import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { showSuccess } from "@/utils/toast";
 
@@ -20,6 +21,11 @@ interface Server {
   name: string;
   url: string;
   type: ServerType;
+}
+
+interface PageInfo {
+  name: string;
+  slug: string;
 }
 
 export default function RealPlayer() {
@@ -37,6 +43,7 @@ export default function RealPlayer() {
   const lastTime = useRef<number>(0);
 
   const [servers, setServers] = useState<Server[]>([]);
+  const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [fetching, setFetching] = useState(true);
@@ -112,10 +119,10 @@ export default function RealPlayer() {
       setIsCodecUnsupported(false);
       
       const url = server.url.trim();
-      const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
-      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || /\/\d+$/.test(url.split('?')[0]);
+      const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":25461");
+      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort;
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS);
+      const isRawStream = (url.includes("stream") || url.includes("type=http") || isTS);
 
       if (isM3U8) {
         const video = document.createElement("video");
@@ -297,7 +304,7 @@ export default function RealPlayer() {
       try {
         const { data: pageData, error: pageError } = await supabase
           .from('pages')
-          .select('id')
+          .select('*')
           .eq('slug', pageSlug)
           .single();
 
@@ -305,11 +312,14 @@ export default function RealPlayer() {
           if (pageSlug === 'default') {
             const def = [{ name: "سيرفر 1", url: "https://8.wwwkora.com/albaplayer/bein-sports-hd-1/?serv=1", type: "iframe" as ServerType }];
             setServers(def);
+            setPageInfo({ name: "بث مباشر مباريات اليوم", slug: "default" });
           } else {
             setError("الصفحة غير موجودة");
           }
           return;
         }
+
+        setPageInfo(pageData);
 
         const { data: serversData, error: serversError } = await supabase
           .from('servers')
@@ -378,6 +388,9 @@ export default function RealPlayer() {
 
   const isCurrentFB = servers[activeIndex] && servers[activeIndex].url.includes("facebook.com");
 
+  const pageTitle = pageInfo ? `${pageInfo.name} - كورة لايف بث مباشر` : "بث مباشر مباريات اليوم - كورة لايف";
+  const pageDesc = pageInfo ? `شاهد ${pageInfo.name} بث مباشر بدون تقطيع بجودة عالية على كورة لايف الرسمي.` : "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع.";
+
   if (fetching) {
     return (
       <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white">
@@ -389,7 +402,13 @@ export default function RealPlayer() {
 
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
-      
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDesc} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDesc} />
+      </Helmet>
+
       <div className="absolute top-4 left-24 z-50">
         <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="ملء الشاشة">
           <Maximize size={28} />
@@ -427,7 +446,6 @@ export default function RealPlayer() {
               )}
               {srv.name}
               
-              {/* زر النسخ يظهر عند التمرير أو إذا كان السيرفر نشطاً */}
               <div 
                 onClick={copyActiveLink}
                 className="absolute left-1 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-emerald-400"
