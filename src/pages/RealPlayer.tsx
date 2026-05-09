@@ -364,12 +364,14 @@ export default function RealPlayer() {
   return (
     <div className="min-h-screen bg-[#020617] flex flex-col items-center pt-16 px-6 md:px-24 pb-6 font-sans relative overflow-hidden">
       
-      {/* جهة اليسار: الزر الخفي في أقصى الزاوية ثم زر التكبير بجانبه */}
+      {/* جهة اليسار: زر التكبير في المربع الأحمر، والزر الخفي على يساره تماماً */}
       <div className="absolute top-4 left-4 flex items-center z-50 pointer-events-none">
         <div className="flex gap-4 items-center pointer-events-auto">
+          {/* الزر الخفي في أقصى اليسار */}
           <button onClick={handleSettingsClick} className="text-white/5 hover:text-white/10 p-1">
             <Settings size={8} />
           </button>
+          {/* زر التكبير في مكان المربع الأحمر */}
           <button onClick={toggleFullScreen} className="text-white/80 hover:text-white p-2 bg-black/20 backdrop-blur-md rounded-full border border-white/10" title="ملء الشاشة">
             <Maximize size={28} />
           </button>
