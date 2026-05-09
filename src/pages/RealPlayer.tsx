@@ -390,6 +390,22 @@ export default function RealPlayer() {
 
   const pageTitle = pageInfo ? `${pageInfo.name} - كورة لايف بث مباشر` : "بث مباشر مباريات اليوم - كورة لايف";
   const pageDesc = pageInfo ? `شاهد ${pageInfo.name} بث مباشر بدون تقطيع بجودة عالية على كورة لايف الرسمي.` : "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع.";
+  const canonicalUrl = `https://${window.location.hostname}${location.pathname}`;
+
+  // بيانات منظمة لجوجل (Schema.org)
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "VideoObject",
+    "name": pageTitle,
+    "description": pageDesc,
+    "thumbnailUrl": "https://www.koora-live.com/placeholder.svg",
+    "uploadDate": new Date().toISOString(),
+    "publication": {
+      "@type": "BroadcastEvent",
+      "isLiveBroadcast": true,
+      "startDate": new Date().toISOString()
+    }
+  };
 
   if (fetching) {
     return (
@@ -405,8 +421,14 @@ export default function RealPlayer() {
       <Helmet>
         <title>{pageTitle}</title>
         <meta name="description" content={pageDesc} />
+        <link rel="canonical" href={canonicalUrl} />
         <meta property="og:title" content={pageTitle} />
         <meta property="og:description" content={pageDesc} />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:type" content="video.other" />
+        <script type="application/ld+json">
+          {JSON.stringify(jsonLd)}
+        </script>
       </Helmet>
 
       <div className="absolute top-4 left-24 z-50">

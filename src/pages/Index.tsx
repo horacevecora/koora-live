@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Radio, Tv, Star, Hash } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -13,8 +14,21 @@ const Index = () => {
     "يلا كورة", "ماي كورة", "بث مباريات"
   ];
 
+  const pageTitle = "كورة لايف - بث مباشر للمباريات | Koora Live الرسمي";
+  const pageDesc = "موقع كورة لايف الرسمي لمتابعة أهم مباريات اليوم بث مباشر بدون تقطيع، تغطية شاملة لجميع الدوريات العالمية والعربية بجودات متعددة تناسب جميع السرعات.";
+
   return (
     <div className="min-h-screen bg-[#0a0f1a] text-white font-sans relative overflow-hidden flex flex-col" dir="rtl">
+      <Helmet>
+        <title>{pageTitle}</title>
+        <meta name="description" content={pageDesc} />
+        <meta name="keywords" content="كورة لايف, بث مباشر, مباريات اليوم, يلا شوت, كورة اون لاين, بين سبورت, الاسطورة, كورة ستار, koora live, yalla shoot, live matches" />
+        <link rel="canonical" href={`https://${window.location.hostname}/`} />
+        <meta property="og:title" content={pageTitle} />
+        <meta property="og:description" content={pageDesc} />
+        <meta property="og:type" content="website" />
+      </Helmet>
+
       {/* خلفية الملعب (تأثير بصري) */}
       <div className="absolute inset-0 opacity-20 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-500/10 via-transparent to-transparent" />
