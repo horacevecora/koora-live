@@ -285,7 +285,6 @@ export default function RealPlayer() {
       if (kickInfo) {
         const ifr = document.createElement("iframe");
         const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
-        // تحسين رابط Kick للتشغيل التلقائي مع الصوت
         ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=${shouldUnmute ? 'false' : 'true'}`;
         ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
         ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
@@ -298,9 +297,16 @@ export default function RealPlayer() {
         container.appendChild(ifr);
       } else if (isFB) {
         const ifr = document.createElement("iframe");
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=${muteParam}&allowfullscreen=true`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
-        ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
+        // تحسين تضمين فيسبوك لملء الشاشة والتكيف مع الحاوية
+        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=1&mute=${muteParam}&allowfullscreen=true&adapt_to_wrapper=true`;
+        ifr.style.width = "100%"; 
+        ifr.style.height = "100%"; 
+        ifr.style.border = "none";
+        ifr.style.position = "absolute";
+        ifr.style.top = "0";
+        ifr.style.left = "0";
+        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"; 
+        ifr.allowFullscreen = true;
         container.appendChild(ifr);
       } else if (ytId) {
         const wrapper = document.createElement("div");
