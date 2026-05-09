@@ -120,7 +120,6 @@ export default function RealPlayer() {
       
       const url = server.url.trim();
       
-      // تحسين التعرف على روابط IPTV والمنصات
       const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000") || url.includes(":8789") || url.includes(":25461");
       const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort || / \/\d+$/.test(url);
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
@@ -137,6 +136,16 @@ export default function RealPlayer() {
         video.setAttribute("crossorigin", "anonymous");
         video.setAttribute("referrerpolicy", "no-referrer");
         container.appendChild(video);
+
+        // معالجة التوقف المفاجئ (Stall Recovery)
+        video.onwaiting = () => setLoading(true);
+        video.onplaying = () => setLoading(false);
+        video.onstalled = () => {
+          // إذا توقف البث، نحاول القفز لنهاية التخزين لاستئناف العمل
+          if (video.buffered.length > 0) {
+            video.currentTime = video.buffered.end(video.buffered.length - 1) - 0.1;
+          }
+        };
 
         const attemptPlay = () => {
           video.play().then(() => {
@@ -164,11 +173,12 @@ export default function RealPlayer() {
             }, {
               enableWorker: true, 
               enableStashBuffer: true, 
-              stashInitialSize: 3072,
+              stashInitialSize: 1024 * 1024, // 1MB buffer (مثل VLC) لضمان استقرار البث
               liveBufferLatencyChasing: true, 
-              liveBufferLatencyMaxLatency: 3,
+              liveBufferLatencyMaxLatency: 10, // السماح بتأخير حتى 10 ثوانٍ لمنع التقطيع
               autoCleanupSourceBuffer: true, 
-              lazyLoad: false
+              lazyLoad: false,
+              statisticsInfoReportInterval: 1000
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
@@ -212,7 +222,12 @@ export default function RealPlayer() {
 
         const startHls = () => {
           if (Hls.isSupported()) {
-            const hls = new Hls({ xhrSetup: (xhr) => { xhr.withCredentials = false; } });
+            const hls = new Hls({ 
+              xhrSetup: (xhr) => { xhr.withCredentials = false; },
+              liveSyncDurationCount: 5, // زيادة عدد القطع المخزنة لتقليل التقطيع
+              liveMaxLatencyDurationCount: 15,
+              enableWorker: true
+            });
             hlsRef.current = hls;
             hls.loadSource(url);
             hls.attachMedia(video);
