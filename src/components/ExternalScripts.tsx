@@ -7,7 +7,6 @@ const ExternalScripts = () => {
   useEffect(() => {
     const loadScripts = async () => {
       try {
-        // جلب الأكواد من Supabase
         const { data, error } = await supabase
           .from('site_settings')
           .select('value')
@@ -16,30 +15,33 @@ const ExternalScripts = () => {
 
         if (error || !data?.value) return;
 
-        // تحويل النص إلى عناصر HTML وحقنها مباشرة في الـ Head
+        // تنظيف الأكواد وحقنها في أعلى الرأس لضمان رؤيتها من قبل روبوتات الفحص
+        const scriptsContent = data.value.trim();
+        if (!scriptsContent) return;
+
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = data.value.trim();
+        tempDiv.innerHTML = scriptsContent;
         
         const nodes = Array.from(tempDiv.childNodes);
         nodes.forEach(node => {
           if (node instanceof HTMLElement || node instanceof Text) {
-            // إذا كان سكريبت، نحتاج لإنشائه يدوياً ليعمل
             if (node instanceof HTMLScriptElement) {
               const script = document.createElement('script');
+              // نسخ كافة الخصائص (Attributes)
               Array.from(node.attributes).forEach(attr => script.setAttribute(attr.name, attr.value));
               script.innerHTML = node.innerHTML;
-              document.head.appendChild(script);
+              // وضعه في البداية ليكون أول ما يراه الروبوت
+              document.head.prepend(script);
             } else {
-              // للميتا تاج والستايل والروابط
-              document.head.appendChild(node.cloneNode(true));
+              document.head.prepend(node.cloneNode(true));
             }
           }
         });
 
-        console.log("✅ [Admin Scripts] تم حقن الأكواد بنجاح من لوحة التحكم");
+        console.log("✅ [Ads System] تم تفعيل الأكواد الإعلانية بنجاح");
 
       } catch (err) {
-        console.error("❌ [Admin Scripts] خطأ في الحقن:", err);
+        console.error("❌ [Ads System] خطأ في تفعيل الأكواد:", err);
       }
     };
 
