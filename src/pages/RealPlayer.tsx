@@ -8,11 +8,10 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, Copy } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
-import { showSuccess } from "@/utils/toast";
 
 type ServerType = "iframe" | "m3u8" | "ts" | "youtube" | "facebook" | "twitch" | "kick" | "raw";
 
@@ -94,16 +93,6 @@ export default function RealPlayer() {
       return match ? match[1] : url;
     }
     return url;
-  };
-
-  const copyActiveLink = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const activeServer = servers[activeIndex];
-    if (activeServer) {
-      const cleanUrl = getCleanLink(activeServer.url);
-      navigator.clipboard.writeText(cleanUrl);
-      showSuccess("تم نسخ الرابط بنجاح");
-    }
   };
 
   const buildPlayer = useCallback(
@@ -465,7 +454,6 @@ export default function RealPlayer() {
                 </span>
               )}
               {srv.name}
-              <div onClick={copyActiveLink} className="absolute left-1 top-1/2 -translate-y-1/2 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-emerald-400" title="نسخ الرابط"><Copy size={12} /></div>
             </button>
           ))}
         </nav>
