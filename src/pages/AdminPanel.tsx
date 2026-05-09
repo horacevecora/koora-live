@@ -238,10 +238,10 @@ const AdminPanel = () => {
     if (!bulkInput || !activePageId) return;
     const lines = bulkInput.split('\n');
     const newServers = lines.map(line => {
-      const parts = line.split(',');
+      const parts = line.split('='); // التغيير هنا ليكون التقسيم بعلامة =
       if (parts.length >= 2) {
         const name = parts[0].trim();
-        const url = parts.slice(1).join(',').trim();
+        const url = parts.slice(1).join('=').trim();
         return {
           name,
           url,
@@ -447,11 +447,11 @@ const AdminPanel = () => {
               <Card className="bg-[#0f172a]/50 border-slate-800 text-white">
                 <CardHeader>
                   <CardTitle className="text-md flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
-                  <CardDescription className="text-[10px]">أضف قنوات متعددة: الاسم، الرابط (كل قناة في سطر)</CardDescription>
+                  <CardDescription className="text-[10px]">أضف قنوات متعددة: الاسم = الرابط (كل قناة في سطر)</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <Textarea 
-                    placeholder="سيرفر 1, https://example.com/live.m3u8&#10;سيرفر 2, https://example.com/embed" 
+                    placeholder="سيرفر 1 = https://example.com/live.m3u8&#10;سيرفر 2 = https://example.com/embed" 
                     value={bulkInput}
                     onChange={(e) => setBulkInput(e.target.value)}
                     className="bg-slate-900 border-slate-700 min-h-[120px] text-[10px]"
