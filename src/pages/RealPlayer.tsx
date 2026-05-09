@@ -112,10 +112,8 @@ export default function RealPlayer() {
       destroy();
       setLoading(true);
       setError(null);
-      setShowUnmuteHint(true); // إظهار تلميح الصوت دائماً عند التشغيل التلقائي المكتوم
-
+      
       const url = server.url.trim();
-
       const isIPTV = (url.includes(":") && url.split(":").length > 2) || 
                      (url.match(/\/\d+\/\d+\/\d+$/)) ||
                      url.includes(".ts") || 
@@ -125,9 +123,10 @@ export default function RealPlayer() {
 
       /* 1. دعم روابط البث المباشر الخام */
       if ((isRawStream || isIPTV) && !url.includes(".m3u8") && !url.includes("<iframe")) {
+        setShowUnmuteHint(true);
         const video = document.createElement("video");
         video.playsInline = true;
-        video.muted = true; // كتم الصوت للتشغيل التلقائي
+        video.muted = true;
         video.autoplay = true;
         video.className = "w-full h-full";
         video.setAttribute("crossorigin", "anonymous");
@@ -157,9 +156,10 @@ export default function RealPlayer() {
 
       /* 2. روابط M3U8 المباشرة */
       if (server.type === "m3u8" || url.includes(".m3u8")) {
+        setShowUnmuteHint(true);
         const video = document.createElement("video");
         video.playsInline = true;
-        video.muted = true; // كتم الصوت للتشغيل التلقائي
+        video.muted = true;
         video.autoplay = true;
         video.setAttribute("referrerpolicy", "no-referrer");
         video.className = "w-full h-full";
@@ -206,12 +206,14 @@ export default function RealPlayer() {
       const isFB = isFacebookUrl(url);
 
       if (kickInfo) {
+        setShowUnmuteHint(false);
         const ifr = document.createElement("iframe");
         const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
         ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
+        ifr.allow = "autoplay; fullscreen";
         ifr.allowFullscreen = true;
         container.appendChild(ifr);
         setLoading(false);
@@ -219,12 +221,14 @@ export default function RealPlayer() {
       }
 
       if (twitchChannel) {
+        setShowUnmuteHint(false);
         const ifr = document.createElement("iframe");
         const domain = window.location.hostname;
         ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${domain}&autoplay=true&muted=true`;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
         ifr.style.border = "none";
+        ifr.allow = "autoplay; fullscreen";
         ifr.allowFullscreen = true;
         container.appendChild(ifr);
         setLoading(false);
@@ -232,6 +236,7 @@ export default function RealPlayer() {
       }
 
       if (isFB) {
+        setShowUnmuteHint(false);
         const ifr = document.createElement("iframe");
         const encodedUrl = encodeURIComponent(url);
         ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodedUrl}&show_text=0&autoplay=1&mute=1&allowfullscreen=true`;
@@ -240,21 +245,19 @@ export default function RealPlayer() {
         ifr.style.border = "none";
         ifr.setAttribute("allowFullScreen", "true");
         ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen";
-        
         container.appendChild(ifr);
         setTimeout(() => setLoading(false), 1500);
         return;
       }
 
       if (ytId) {
+        setShowUnmuteHint(false);
         const wrapper = document.createElement("div");
         wrapper.className = "youtube-crop-wrapper";
-        
         const ifr = document.createElement("iframe");
         ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1&playsinline=1&autoplay=1&mute=1&iv_load_policy=3&controls=1`;
-        ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
+        ifr.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen";
         ifr.allowFullscreen = true;
-        
         wrapper.appendChild(ifr);
         container.appendChild(wrapper);
         setTimeout(() => setLoading(false), 1000);
@@ -262,14 +265,16 @@ export default function RealPlayer() {
       }
 
       /* 4. IFRAME عام */
+      setShowUnmuteHint(false);
       if (url.includes("<iframe")) {
-        container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allowfullscreen');
+        container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
         const ifr = container.querySelector("iframe");
         if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
         const ifr = document.createElement("iframe");
         ifr.src = url;
         ifr.setAttribute("referrerpolicy", "no-referrer");
+        ifr.allow = "autoplay; fullscreen";
         ifr.allowFullscreen = true;
         ifr.style.width = "100%";
         ifr.style.height = "100%";
@@ -298,7 +303,6 @@ export default function RealPlayer() {
       plyrRef.current.muted = false;
       plyrRef.current.volume = 1;
     }
-    // محاولة تفعيل الصوت للعناصر الأخرى إذا وجدت
     const video = containerRef.current?.querySelector('video');
     if (video) {
       video.muted = false;
