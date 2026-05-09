@@ -117,14 +117,9 @@ export default function RealPlayer() {
       const url = server.url.trim();
       
       // منطق متطور للتعرف على روابط IPTV و MPEG-TS
-      const isTS = url.includes(".ts") || 
-                   url.includes("extension=ts") || 
-                   url.includes(":2086") || 
-                   url.includes(":8080") ||
-                   url.includes("/live.php");
-
+      const isIPTVPort = url.includes(":2086") || url.includes(":8080") || url.includes(":8000");
+      const isTS = url.includes(".ts") || url.includes("extension=ts") || url.includes("/live.php") || isIPTVPort;
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      
       const isRawStream = url.includes("stream") || url.includes("type=http") || url.includes("nocache") || isTS;
 
       /* 1. دعم روابط البث المباشر الخام و IPTV (TS) */
@@ -142,8 +137,19 @@ export default function RealPlayer() {
           if (!video.muted && video.volume > 0) setShowUnmuteHint(false);
         };
 
-        // محاولة التشغيل باستخدام mpegts.js أولاً
-        if (isTS && mpegts.getFeatureList().mseLivePlayback) {
+        // لروابط المنفذ 2086، نفضل التشغيل المباشر (Native) لأنه أكثر استقراراً لهذه السيرفرات
+        if (isIPTVPort) {
+          video.src = url;
+          video.play().then(() => {
+            if (video.muted) setShowUnmuteHint(true);
+            setLoading(false);
+          }).catch(() => {
+            setShowUnmuteHint(true);
+            setLoading(false);
+          });
+        } 
+        // لروابط TS الأخرى، نحاول mpegts.js
+        else if (isTS && mpegts.getFeatureList().mseLivePlayback) {
           try {
             const player = mpegts.createPlayer({ 
               type: 'mpegts', 
@@ -153,8 +159,7 @@ export default function RealPlayer() {
             }, {
               enableWorker: true,
               enableStashBuffer: false,
-              stashInitialSize: 128,
-              lazyLoad: false
+              stashInitialSize: 128
             });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
@@ -162,28 +167,25 @@ export default function RealPlayer() {
             
             Promise.resolve(player.play()).then(() => {
               if (video.muted) setShowUnmuteHint(true);
+              setLoading(false);
             }).catch(() => {
-              // إذا فشل المشغل الذكي، جرب التشغيل المباشر
-              video.src = url;
-              video.play().catch(() => setShowUnmuteHint(true));
-            });
-
-            player.on(mpegts.Events.ERROR, () => {
-              // في حال حدوث خطأ في المكتبة، ننتقل للتشغيل المباشر
               video.src = url;
               video.play().catch(() => {});
+              setLoading(false);
             });
-
           } catch (e) {
             video.src = url;
-            video.play().catch(() => setShowUnmuteHint(true));
+            video.play().catch(() => {});
+            setLoading(false);
           }
         } else {
           video.src = url;
           video.play().then(() => {
             if (video.muted) setShowUnmuteHint(true);
+            setLoading(false);
           }).catch(() => {
             setShowUnmuteHint(true);
+            setLoading(false);
           });
         }
 
@@ -194,7 +196,6 @@ export default function RealPlayer() {
           muted: true
         });
         plyrRef.current = plyr;
-        setLoading(false);
         return;
       }
 
