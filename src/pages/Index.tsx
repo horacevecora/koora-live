@@ -59,6 +59,18 @@ const Index = () => {
         <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/5" />
       </div>
 
+      {/* الشعار الاحترافي (Logo) */}
+      <div className="absolute top-24 left-8 md:left-20 z-20 hidden lg:block">
+        <div className="relative group cursor-pointer" onClick={() => navigate('/real.html')}>
+          <div className="absolute inset-0 bg-[#00e676] blur-[60px] opacity-20 rounded-full" />
+          <img 
+            src="/favicon.svg" 
+            alt="Koora Live Pro Logo" 
+            className="w-48 h-48 md:w-56 md:h-56 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)] relative z-10 transition-transform duration-300 hover:scale-105"
+          />
+        </div>
+      </div>
+
       {/* الشريط العلوي */}
       <header className="relative z-10 flex items-center justify-between px-6 py-4 bg-black/40 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-3">
