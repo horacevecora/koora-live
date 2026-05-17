@@ -27,11 +27,11 @@ interface Page {
 
 const AdminPanel = () => {
   const navigate = useNavigate();
-  const [session, setSession] = useState<any>(null);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   
-  // حقل الكود فقط
+  // حقل الكود
   const [accessCode, setAccessCode] = useState("");
 
   const [pages, setPages] = useState<Page[]>([]);
@@ -47,40 +47,25 @@ const AdminPanel = () => {
   const [externalScripts, setExternalScripts] = useState("");
 
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session: currentSession } } = await supabase.auth.getSession();
-      setSession(currentSession);
-      setAuthLoading(false);
-      if (currentSession) fetchInitialData();
-    };
-
-    checkSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
-      setSession(newSession);
-      if (newSession) fetchInitialData();
-    });
-
-    return () => subscription.unsubscribe();
+    // التحقق من وجود جلسة دخول سابقة في المتصفح
+    const savedAuth = localStorage.getItem('admin_auth');
+    if (savedAuth === 'true') {
+      setIsAuthorized(true);
+      fetchInitialData();
+    }
+    setAuthLoading(false);
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    
-    // تسجيل الدخول باستخدام الكود ككلمة مرور وبريد افتراضي
-    // ملاحظة: يجب أن يكون هناك مستخدم بهذا البريد في Supabase Auth
-    const { error } = await supabase.auth.signInWithPassword({ 
-      email: "admin@koora.com", 
-      password: accessCode 
-    });
-
-    if (error) {
-      showError("كود الدخول غير صحيح");
-    } else {
+    if (accessCode === 'simo') {
+      setIsAuthorized(true);
+      localStorage.setItem('admin_auth', 'true');
       showSuccess("تم الدخول بنجاح");
+      fetchInitialData();
+    } else {
+      showError("كود الدخول غير صحيح");
     }
-    setIsLoading(false);
   };
 
   const fetchInitialData = async () => {
@@ -162,8 +147,9 @@ const AdminPanel = () => {
     else showSuccess("تم حفظ الأكواد بنجاح");
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
+  const handleLogout = () => {
+    localStorage.removeItem('admin_auth');
+    setIsAuthorized(false);
     navigate('/');
   };
 
@@ -175,7 +161,7 @@ const AdminPanel = () => {
     );
   }
 
-  if (!session) {
+  if (!isAuthorized) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans" dir="rtl">
         <Card className="w-full max-w-sm bg-[#0f172a] border-slate-800 text-white shadow-2xl overflow-hidden border-t-4 border-t-indigo-600">
@@ -190,16 +176,16 @@ const AdminPanel = () => {
             <form onSubmit={handleLogin} className="space-y-6">
               <div className="space-y-2">
                 <Input 
-                  type="password" 
-                  placeholder="كود الدخول (simo)" 
+                  type="text" 
+                  placeholder="أدخل الكود هنا (simo)" 
                   value={accessCode} 
                   onChange={e => setAccessCode(e.target.value)} 
-                  className="bg-slate-900 border-slate-700 h-12 text-center text-lg font-bold" 
+                  className="bg-slate-900 border-slate-700 h-12 text-center text-lg font-bold placeholder:text-slate-600" 
                   required 
                 />
               </div>
-              <Button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 font-black h-12 text-lg">
-                {isLoading ? <Loader2 className="animate-spin" /> : "دخول"}
+              <Button type="submit" className="w-full bg-indigo-600 hover:bg-indigo-700 font-black h-12 text-lg">
+                دخول
               </Button>
             </form>
           </CardContent>
