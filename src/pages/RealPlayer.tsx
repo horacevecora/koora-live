@@ -108,17 +108,21 @@ export default function RealPlayer() {
 
       container.innerHTML = "";
       destroy();
-      setLoading(true);
       setError(null);
       setShowUnmuteHint(false);
-      setIsMixedContent(false);
       
       let url = server.url.trim();
       const isHttps = window.location.protocol === 'https:';
       const isUrlHttp = url.startsWith('http:');
       
+      // اكتشاف Mixed Content فوراً
       if (isHttps && isUrlHttp) {
         setIsMixedContent(true);
+        setLoading(false); // إيقاف اللودينج لإظهار التحذير
+        return; // عدم محاولة تشغيل الرابط الممنوع
+      } else {
+        setIsMixedContent(false);
+        setLoading(true);
       }
 
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
@@ -202,11 +206,7 @@ export default function RealPlayer() {
         video.onwaiting = () => setLoading(true);
         video.onplaying = () => setLoading(false);
         video.onerror = () => {
-          if (isHttps && isUrlHttp) {
-            setError("المتصفح يمنع تشغيل روابط HTTP على موقع آمن. يرجى اتباع التعليمات في التنبيه الأصفر بالأعلى.");
-          } else {
-            setError("خطأ في تشغيل الرابط المباشر.");
-          }
+          setError("خطأ في تشغيل الرابط المباشر.");
           setLoading(false);
         };
 
@@ -225,17 +225,16 @@ export default function RealPlayer() {
           });
         };
 
-        // تفعيل CORS المباشر عبر mpegts.js
         if (!forceNative && !isNativeMode && mpegts.getFeatureList().mseLivePlayback) {
           try {
             const player = mpegts.createPlayer({ 
               type: 'mpegts', 
               isLive: true, 
               url: url, 
-              cors: true // تفعيل CORS المباشر
+              cors: true 
             }, {
               enableWorker: true,
-              enableStashBuffer: false, // تعطيل التخزين لضمان البث المباشر الفوري
+              enableStashBuffer: false,
               stashInitialSize: 128,
               lazyLoad: false,
               liveBufferLatencyChasing: true
@@ -250,13 +249,11 @@ export default function RealPlayer() {
           }
         }
         
-        // Fallback to native video
         video.src = url;
         attemptPlay();
         return;
       }
 
-      // باقي أنواع الروابط (Iframe, YouTube, etc.)
       const getYouTubeId = (url: string) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
@@ -489,14 +486,14 @@ export default function RealPlayer() {
         <div className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden" onClick={handleUnmute}>
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
           
-          {loading && (
+          {loading && !isMixedContent && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
               <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ استقرار البث...</p>
             </div>
           )}
 
-          {isMixedContent && !loading && !error && (
+          {isMixedContent && (
             <div className="absolute inset-0 z-20 bg-black/90 flex items-center justify-center p-4">
               <div className="bg-amber-500 text-black p-6 rounded-[2rem] flex flex-col gap-4 text-right shadow-2xl border-4 border-white/20 max-w-lg animate-in fade-in zoom-in duration-300">
                 <div className="flex items-center justify-between gap-4">
@@ -524,14 +521,14 @@ export default function RealPlayer() {
             </div>
           )}
 
-          {showUnmuteHint && !loading && !isCurrentFB && (
+          {showUnmuteHint && !loading && !isCurrentFB && !isMixedContent && (
             <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors" onClick={(e) => { e.stopPropagation(); handleUnmute(); }}>
               <Volume2 size={20} />
               <span className="font-black text-sm">انقر لتشغيل الصوت</span>
             </div>
           )}
 
-          {error && !loading && (
+          {error && !loading && !isMixedContent && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
               <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 mb-4 max-w-md">
                 <AlertTriangle className="text-red-500 mx-auto mb-2" size={32} />
@@ -543,7 +540,7 @@ export default function RealPlayer() {
         </div>
       </article>
 
-      {isCurrentStream && !loading && !error && (
+      {isCurrentStream && !loading && !error && !isMixedContent && (
         <div className="mt-6 flex flex-col items-center gap-3">
           <button 
             onClick={toggleNativeMode}
