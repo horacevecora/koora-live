@@ -7,45 +7,53 @@ const ExternalScripts = () => {
   useEffect(() => {
     const fetchAndInject = async () => {
       try {
+        // جلب الأكواد من الإعدادات
         const { data, error } = await supabase
           .from('site_settings')
           .select('value')
           .eq('key', 'external_scripts')
           .single();
 
-        if (error || !data?.value) return;
+        if (error || !data?.value) {
+          console.log("[ExternalScripts] لا توجد أكواد خارجية لحقنها.");
+          return;
+        }
 
-        // إنشاء حاوية مخفية للأكواد الخارجية لتنظيمها
-        let container = document.getElementById('dyad-external-scripts');
-        if (container) container.remove();
-        
-        container = document.createElement('div');
-        container.id = 'dyad-external-scripts';
-        container.style.display = 'none';
-        document.head.appendChild(container);
+        console.log("[ExternalScripts] جاري حقن الأكواد الخارجية...");
 
-        const range = document.createRange();
-        const documentFragment = range.createContextualFragment(data.value);
+        // تحويل النص إلى عناصر DOM
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(data.value, 'text/html');
         
-        // حقن السكريبتات بطريقة تضمن التنفيذ الفوري
-        const scripts = documentFragment.querySelectorAll('script');
+        // 1. حقن السكربتات
+        const scripts = doc.querySelectorAll('script');
         scripts.forEach(oldScript => {
           const newScript = document.createElement('script');
+          
+          // نسخ كافة الخصائص (src, async, defer, data-zone, etc)
           Array.from(oldScript.attributes).forEach(attr => {
             newScript.setAttribute(attr.name, attr.value);
           });
-          if (oldScript.innerHTML) {
-            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+          
+          // نسخ المحتوى الداخلي إذا وجد
+          if (oldScript.textContent) {
+            newScript.textContent = oldScript.textContent;
           }
-          container?.appendChild(newScript);
+          
+          // الحقن المباشر في الـ head لضمان رؤيتها من قبل أدوات التحقق
+          document.head.appendChild(newScript);
         });
 
-        // حقن الميتا والستايلات
-        const otherElements = documentFragment.querySelectorAll('link, meta, style');
-        otherElements.forEach(el => container?.appendChild(el));
+        // 2. حقن الميتا والستايلات والروابط الأخرى
+        const otherElements = doc.querySelectorAll('link, meta, style');
+        otherElements.forEach(el => {
+          document.head.appendChild(el.cloneNode(true));
+        });
+
+        console.log("[ExternalScripts] تم حقن الأكواد بنجاح.");
 
       } catch (err) {
-        console.error("Error injecting external scripts:", err);
+        console.error("[ExternalScripts] خطأ في حقن الأكواد:", err);
       }
     };
 

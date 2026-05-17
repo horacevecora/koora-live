@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, CheckCircle2, Circle, Eye } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, CheckCircle2, Circle, Eye, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -170,19 +170,19 @@ const AdminPanel = () => {
     await saveScriptsToDB(newList);
     setScriptName("");
     setNewScriptCode("");
-    showSuccess("تم حفظ الكود بنجاح");
+    showSuccess("تم حفظ الكود. يرجى تحديث الصفحة لتفعيله.");
   };
 
   const toggleScript = async (id: string) => {
     const newList = scriptList.map(s => s.id === id ? { ...s, active: !s.active } : s);
     await saveScriptsToDB(newList);
-    showSuccess("تم تحديث حالة الكود");
+    showSuccess("تم تحديث الحالة. يرجى تحديث الصفحة.");
   };
 
   const deleteScript = async (id: string) => {
     const newList = scriptList.filter(s => s.id !== id);
     await saveScriptsToDB(newList);
-    showSuccess("تم حذف الكود");
+    showSuccess("تم حذف الكود.");
   };
 
   const startEditScript = (s: ScriptSnippet) => {
@@ -329,6 +329,7 @@ const AdminPanel = () => {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية</h1>
           <div className="flex gap-2 flex-wrap justify-center">
+            <Button onClick={() => window.location.reload()} variant="outline" className="bg-indigo-600/20 border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/40 gap-2 text-xs h-10"><RefreshCw size={16} /> تحديث للتفعيل</Button>
             <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Download size={16} /> تصدير</Button>
             <div className="relative"><input type="file" accept=".json" onChange={importBackup} className="absolute inset-0 opacity-0 cursor-pointer" /><Button variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Upload size={16} /> استيراد</Button></div>
             <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Home size={16} /> الرئيسية</Button>
@@ -413,6 +414,11 @@ const AdminPanel = () => {
                 <p className="text-center text-[10px] text-slate-500">أضف أكواد التحقق أو الإعلانات هنا وسيتم تفعيلها تلقائياً</p>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="bg-indigo-600/10 p-4 rounded-xl border border-indigo-500/20 mb-2">
+                  <p className="text-[10px] text-indigo-300 font-bold leading-relaxed">
+                    💡 نصيحة للتحقق: بعد إضافة كود Monetag، اضغط على زر "تحديث للتفعيل" في أعلى لوحة التحكم، ثم اذهب لموقع Monetag واضغط على Verify.
+                  </p>
+                </div>
                 <Input placeholder="اسم تعريفي للكود (مثلاً: إعلان منبثق 1)" value={scriptName} onChange={e => setScriptName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
                 <Textarea placeholder="ألصق كود الجافا سكريبت أو الميتا هنا..." value={newScriptCode} onChange={(e) => setNewScriptCode(e.target.value)} className="bg-slate-900/80 border-slate-700 min-h-[150px] font-mono text-xs text-right" dir="ltr" />
                 <Button onClick={handleAddOrUpdateScript} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg">{editingScriptId ? 'تحديث الكود المحفوظ' : 'حفظ الكود في السحابة'}</Button>
