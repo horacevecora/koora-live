@@ -187,7 +187,7 @@ const Index = () => {
             <div className="lg:col-span-2 space-y-12 text-right">
               <div className="space-y-6">
                 <h2 className="text-4xl md:text-5xl font-black text-white leading-tight">
-                  لماذا يعتبر <span className="text-[#00e676]">كورة لايف</span> الخيار الأول للمشجعين؟
+                  لماذا يعتبر <span className="text-[#00e676]">كورة لايف</span> الخيار الأول للمشجعين?
                 </h2>
                 <div className="prose prose-invert max-w-none text-slate-400 text-lg leading-loose">
                   <p>
@@ -263,9 +263,9 @@ const Index = () => {
             جميع الحقوق محفوظة لموقع كورة لايف الرسمي © 2026. نحن لا نستضيف أي فيديوهات على سيرفراتنا، بل نقوم بتوفير روابط البث المتاحة علنياً على الإنترنت.
           </p>
           <div className="flex justify-center gap-6 text-[10px] text-slate-600 font-black uppercase tracking-widest">
-            <span>Kora Online</span>
-            <span>Match Live</span>
-            <span>Yalla Shoot</span>
+            <Link to="/" className="hover:text-[#00e676] transition-colors">Kora Online</Link>
+            <Link to="/" className="hover:text-[#00e676] transition-colors">Match Live</Link>
+            <Link to="/" className="hover:text-[#00e676] transition-colors">Yalla Shoot</Link>
           </div>
         </div>
       </footer>
