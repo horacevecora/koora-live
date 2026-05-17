@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, ShieldAlert } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, Lock, LogOut, ShieldAlert, Save } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -28,13 +28,6 @@ interface Page {
   slug: string;
 }
 
-interface SiteFile {
-  id: string;
-  filename: string;
-  content: string;
-  content_type: string;
-}
-
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState<any>(null);
@@ -52,10 +45,6 @@ const AdminPanel = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const [externalScripts, setExternalScripts] = useState("");
-  const [bulkInput, setBulkInput] = useState("");
-  const [siteFiles, setSiteFiles] = useState<SiteFile[]>([]);
-  const [newFileName, setNewFileName] = useState("sw.js");
-  const [newFileContent, setNewFileContent] = useState("");
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -74,13 +63,11 @@ const AdminPanel = () => {
   const fetchInitialData = async () => {
     setIsLoading(true);
     try {
-      const { data: pagesData, error: pagesError } = await supabase
+      const { data: pagesData } = await supabase
         .from('pages')
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (pagesError) throw pagesError;
-      
       if (pagesData && pagesData.length > 0) {
         setPages(pagesData);
         const defaultPage = pagesData.find(p => p.slug === 'default') || pagesData[0];
@@ -97,9 +84,6 @@ const AdminPanel = () => {
       
       if (settingsData) setExternalScripts(settingsData.value);
 
-      const { data: filesData } = await supabase.from('site_files').select('*');
-      if (filesData) setSiteFiles(filesData);
-
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -108,14 +92,13 @@ const AdminPanel = () => {
   };
 
   const fetchServers = async (pageId: string) => {
-    const { data, error } = await supabase
+    const { data } = await supabase
       .from('servers')
       .select('*')
       .eq('page_id', pageId)
       .order('sort_order', { ascending: true });
     
-    if (error) showError("فشل في تحميل القنوات");
-    else setServers(data || []);
+    setServers(data || []);
   };
 
   const addPage = async () => {
@@ -126,7 +109,7 @@ const AdminPanel = () => {
       .select()
       .single();
 
-    if (error) showError("فشل في إنشاء الصفحة: تأكد من تفعيل RLS");
+    if (error) showError("فشل إنشاء الصفحة");
     else {
       setPages([...pages, data]);
       setNewPageName("");
@@ -138,7 +121,7 @@ const AdminPanel = () => {
   const deletePage = async (id: string, slug: string) => {
     if (slug === 'default') return;
     const { error } = await supabase.from('pages').delete().eq('id', id);
-    if (error) showError("فشل في حذف الصفحة");
+    if (error) showError("فشل حذف الصفحة");
     else {
       setPages(pages.filter(p => p.id !== id));
       showSuccess("تم حذف الصفحة");
@@ -166,7 +149,7 @@ const AdminPanel = () => {
         .update({ name: newName, url: newUrl, type })
         .eq('id', editingId);
       
-      if (error) showError(`فشل التحديث: ${error.message}`);
+      if (error) showError("فشل التحديث");
       else {
         showSuccess("تم التحديث");
         fetchServers(activePageId);
@@ -185,7 +168,7 @@ const AdminPanel = () => {
           sort_order: servers.length 
         }]);
       
-      if (error) showError(`فشل الإضافة: ${error.message}`);
+      if (error) showError("فشل الإضافة");
       else {
         showSuccess("تمت الإضافة");
         fetchServers(activePageId);
@@ -195,23 +178,6 @@ const AdminPanel = () => {
     }
   };
 
-  const moveChannel = async (index: number, direction: 'up' | 'down') => {
-    if (!activePageId) return;
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= servers.length) return;
-
-    const updatedServers = [...servers];
-    const temp = updatedServers[index].sort_order;
-    updatedServers[index].sort_order = updatedServers[newIndex].sort_order;
-    updatedServers[newIndex].sort_order = temp;
-
-    const { error: err1 } = await supabase.from('servers').update({ sort_order: updatedServers[index].sort_order }).eq('id', updatedServers[index].id);
-    const { error: err2 } = await supabase.from('servers').update({ sort_order: updatedServers[newIndex].sort_order }).eq('id', updatedServers[newIndex].id);
-
-    if (err1 || err2) showError("فشل تغيير الترتيب");
-    else fetchServers(activePageId);
-  };
-
   const deleteChannel = async (id: string) => {
     const { error } = await supabase.from('servers').delete().eq('id', id);
     if (error) showError("فشل الحذف");
@@ -219,39 +185,14 @@ const AdminPanel = () => {
   };
 
   const saveExternalScripts = async () => {
+    setIsLoading(true);
     const { error } = await supabase
       .from('site_settings')
       .upsert({ key: 'external_scripts', value: externalScripts }, { onConflict: 'key' });
     
+    setIsLoading(false);
     if (error) showError("فشل حفظ الأكواد");
-    else showSuccess("تم حفظ الأكواد");
-  };
-
-  const handleSaveFile = async () => {
-    if (!newFileName || !newFileContent) return;
-    const { error } = await supabase
-      .from('site_files')
-      .upsert({ 
-        filename: newFileName, 
-        content: newFileContent,
-        content_type: newFileName.endsWith('.js') ? 'application/javascript' : 'text/plain'
-      }, { onConflict: 'filename' });
-
-    if (error) showError("فشل حفظ الملف");
-    else {
-      showSuccess("تم حفظ الملف بنجاح");
-      fetchInitialData();
-      setNewFileContent("");
-    }
-  };
-
-  const deleteFile = async (id: string) => {
-    const { error } = await supabase.from('site_files').delete().eq('id', id);
-    if (error) showError("فشل حذف الملف");
-    else {
-      showSuccess("تم حذف الملف");
-      fetchInitialData();
-    }
+    else showSuccess("تم حفظ الأكواد بنجاح");
   };
 
   const handleLogout = async () => {
@@ -289,28 +230,20 @@ const AdminPanel = () => {
       <div className="max-w-7xl mx-auto w-full space-y-8 flex-grow">
         
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية الآمنة</h1>
-          <div className="flex gap-2 flex-wrap justify-center">
-            <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10">
+          <h1 className="text-3xl font-black text-white">لوحة التحكم</h1>
+          <div className="flex gap-2">
+            <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs">
               <Home size={16} /> الرئيسية
             </Button>
-            <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 hover:bg-red-900/40 gap-2 text-xs h-10">
+            <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 hover:bg-red-900/40 gap-2 text-xs">
               <LogOut size={16} /> خروج
             </Button>
           </div>
         </div>
 
-        <Alert className="bg-amber-500/10 border-amber-500/50 text-amber-500">
-          <ShieldAlert className="h-4 w-4" />
-          <AlertTitle className="font-black">تنبيه أمني هام</AlertTitle>
-          <AlertDescription className="text-xs">
-            تأكد من تفعيل **Row Level Security (RLS)** في لوحة تحكم Supabase لمنع أي شخص من التلاعب بالبيانات حتى بدون دخول اللوحة.
-          </AlertDescription>
-        </Alert>
-
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4 space-y-8">
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white">
               <CardHeader>
                 <CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
               </CardHeader>
@@ -318,23 +251,22 @@ const AdminPanel = () => {
                 <div className="space-y-3">
                   <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
                   <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
-                  <Button onClick={addPage} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-10 gap-2">
-                    <Plus size={16} /> إنشاء صفحة
+                  <Button onClick={addPage} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-10">
+                    إنشاء صفحة
                   </Button>
                 </div>
                 <div className="space-y-2 pt-4">
                   {pages.map(p => (
-                    <div key={p.id} className="flex flex-col gap-1">
-                      <div 
-                        onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} 
-                        className={`w-full flex items-center justify-between px-4 h-12 font-bold rounded-md cursor-pointer transition-colors ${activePageId === p.id ? 'bg-indigo-600 text-white' : 'bg-slate-900/50 border border-slate-800 text-slate-300 hover:bg-slate-800'}`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} className="p-1 hover:text-white" role="button"><ExternalLink size={14} /></div>
-                          {p.slug !== 'default' && <div onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} className="p-1 hover:text-red-400" role="button"><Trash2 size={14} /></div>}
-                        </div>
-                        <span>{p.name}</span>
+                    <div 
+                      key={p.id}
+                      onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} 
+                      className={`w-full flex items-center justify-between px-4 h-12 font-bold rounded-md cursor-pointer transition-colors ${activePageId === p.id ? 'bg-indigo-600' : 'bg-slate-900/50 border border-slate-800 hover:bg-slate-800'}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <ExternalLink size={14} className="hover:text-white" onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} />
+                        {p.slug !== 'default' && <Trash2 size={14} className="hover:text-red-400" onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} />}
                       </div>
+                      <span>{p.name}</span>
                     </div>
                   ))}
                 </div>
@@ -343,9 +275,9 @@ const AdminPanel = () => {
           </div>
 
           <div className="lg:col-span-8 space-y-8">
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-center">تعديل قنوات: <span className="text-indigo-400">{activePageName}</span></CardTitle>
+                <CardTitle className="text-xl font-bold">تعديل قنوات: {activePageName}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="flex flex-col md:flex-row gap-3">
@@ -356,14 +288,14 @@ const AdminPanel = () => {
                   </Button>
                 </div>
                 
-                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                  {servers.map((s, i) => (
-                    <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl group hover:border-indigo-500/30 transition-all">
+                <div className="space-y-3">
+                  {servers.map((s) => (
+                    <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
                       <div className="flex-grow text-right">
                         <div className="font-black text-sm">{s.name}</div>
                         <div className="text-[10px] text-slate-500 truncate max-w-[300px]">{s.url}</div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                      <div className="flex items-center gap-1">
                         <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
                         <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
                       </div>
@@ -373,23 +305,22 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
+                <CardTitle className="text-xl font-bold flex items-center gap-2">
                   <Code size={20} /> إعدادات الأكواد (Ads/SEO)
                 </CardTitle>
-                <p className="text-center text-[10px] text-red-400 font-bold">تنبيه: حقن الأكواد ميزة قوية، استخدمها بحذر لتجنب ثغرات XSS</p>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Textarea 
-                  placeholder="ألصق كود الميتاتاج أو الإعلانات هنا..." 
+                  placeholder="ألصق كود الميتاتاج أو الإعلانات هنا (مثال: <script src='...'></script>)" 
                   value={externalScripts}
                   onChange={(e) => setExternalScripts(e.target.value)}
-                  className="bg-slate-900/80 border-slate-700 min-h-[200px] font-mono text-xs text-right"
+                  className="bg-slate-900/80 border-slate-700 min-h-[250px] font-mono text-xs text-right"
                   dir="ltr"
                 />
-                <Button onClick={saveExternalScripts} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg">
-                  حفظ الأكواد
+                <Button onClick={saveExternalScripts} disabled={isLoading} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12">
+                  {isLoading ? <Loader2 className="animate-spin" /> : <><Save size={18} className="ml-2" /> حفظ الأكواد وتفعيلها</>}
                 </Button>
               </CardContent>
             </Card>
