@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, CheckCircle2, Circle } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, CheckCircle2, Circle, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -472,7 +472,19 @@ const AdminPanel = () => {
                 <div className="space-y-2 pt-4">
                   {siteFiles.map(file => (
                     <div key={file.id} className="flex items-center justify-between p-3 bg-slate-900/40 border border-slate-800 rounded-lg">
-                      <div className="flex items-center gap-2"><button onClick={() => deleteFile(file.id)} className="text-red-500 p-1"><Trash2 size={16} /></button><button onClick={() => { setNewFileName(file.filename); setNewFileContent(file.content); }} className="text-indigo-400 p-1"><Edit2 size={16} /></button></div>
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => deleteFile(file.id)} className="text-slate-500 hover:text-red-500 p-1" title="حذف"><Trash2 size={16} /></button>
+                        <button onClick={() => { setNewFileName(file.filename); setNewFileContent(file.content); }} className="text-slate-500 hover:text-indigo-400 p-1" title="تعديل"><Edit2 size={16} /></button>
+                        <a 
+                          href={`https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/site-files?file=${file.filename}`} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="text-slate-500 hover:text-emerald-400 p-1"
+                          title="معاينة الملف السحابي"
+                        >
+                          <Eye size={16} />
+                        </a>
+                      </div>
                       <span className="text-xs font-mono text-slate-400">/{file.filename}</span>
                     </div>
                   ))}
