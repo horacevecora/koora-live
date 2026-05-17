@@ -8,7 +8,7 @@ import Hls from "hls.js";
 import mpegts from "mpegts.js";
 import "plyr/dist/plyr.css";
 import { cn } from "@/lib/utils";
-import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert, Zap, LockOpen } from "lucide-react";
+import { Settings, Maximize, Volume2, RefreshCw, AlertTriangle, Loader2, Home, ShieldAlert, Zap, LockOpen, Globe } from "lucide-react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -54,6 +54,7 @@ export default function RealPlayer() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isMixedContent, setIsMixedContent] = useState(false);
   const [isNativeMode, setIsNativeMode] = useState(false);
+  const [isUsingProxy, setIsUsingProxy] = useState(false);
 
   const tags = [
     "كورة لايف", "بث مباشر", "يلا شوت", "كورة اون لاين", 
@@ -102,7 +103,7 @@ export default function RealPlayer() {
   };
 
   const buildPlayer = useCallback(
-    (server: Server, forceNative = false, shouldUnmute = hasInteracted) => {
+    (server: Server, forceNative = false, shouldUnmute = hasInteracted, useProxy = false) => {
       const container = containerRef.current;
       if (!container) return;
 
@@ -113,17 +114,24 @@ export default function RealPlayer() {
       setShowUnmuteHint(false);
       setIsMixedContent(false);
       
-      let url = server.url.trim();
+      let originalUrl = server.url.trim();
+      let finalUrl = originalUrl;
+
+      // منطق التحويل لبروكسي إذا تم طلبه أو إذا كان هناك تعارض HTTP/HTTPS
+      if (useProxy && originalUrl.startsWith('http:')) {
+        finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`;
+      }
+
       const isHttps = window.location.protocol === 'https:';
-      const isUrlHttp = url.startsWith('http:');
+      const isUrlHttp = originalUrl.startsWith('http:');
       
-      if (isHttps && isUrlHttp) {
+      if (isHttps && isUrlHttp && !useProxy) {
         setIsMixedContent(true);
       }
 
-      const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
-      const isXtream = /\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/\d+$/.test(url) || /:\d+\/.*?\/\d+$/.test(url);
-      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes(".ts") || isXtream || server.type === "ts");
+      const isM3U8 = finalUrl.includes(".m3u8") || server.type === "m3u8";
+      const isXtream = /\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/\d+$/.test(originalUrl) || /:\d+\/.*?\/\d+$/.test(originalUrl);
+      const isRawStream = (originalUrl.includes("stream") || originalUrl.includes("type=http") || originalUrl.includes(".ts") || isXtream || server.type === "ts");
 
       if (isM3U8) {
         const video = document.createElement("video");
@@ -150,7 +158,7 @@ export default function RealPlayer() {
             enableWorker: true
           });
           hlsRef.current = hls;
-          hls.loadSource(url);
+          hls.loadSource(finalUrl);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             setLoading(false);
@@ -162,13 +170,17 @@ export default function RealPlayer() {
             startStallMonitor(video);
           });
           hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal) {
+            if (data.fatal && !useProxy && isUrlHttp) {
+              // محاولة تلقائية باستخدام البروكسي عند الفشل
+              setIsUsingProxy(true);
+              buildPlayer(server, forceNative, shouldUnmute, true);
+            } else if (data.fatal) {
               setError("فشل تحميل البث. قد يكون الرابط متوقفاً أو يحتاج لتحديث.");
               setLoading(false);
             }
           });
         } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-          video.src = url;
+          video.src = finalUrl;
           video.play().catch(() => {
             video.muted = true;
             video.play();
@@ -180,7 +192,7 @@ export default function RealPlayer() {
         return;
       }
 
-      if (isRawStream && !url.includes("<iframe")) {
+      if (isRawStream && !finalUrl.includes("<iframe")) {
         const video = document.createElement("video");
         video.playsInline = true;
         video.autoplay = true;
@@ -194,12 +206,14 @@ export default function RealPlayer() {
         video.onwaiting = () => setLoading(true);
         video.onplaying = () => setLoading(false);
         video.onerror = () => {
-          if (isHttps && isUrlHttp) {
-            setError("المتصفح يمنع تشغيل روابط HTTP على موقع آمن. يرجى اتباع التعليمات في التنبيه الأصفر بالأعلى.");
+          if (isHttps && isUrlHttp && !useProxy) {
+            // محاولة تلقائية باستخدام البروكسي
+            setIsUsingProxy(true);
+            buildPlayer(server, forceNative, shouldUnmute, true);
           } else {
             setError("خطأ في تشغيل الرابط المباشر.");
+            setLoading(false);
           }
-          setLoading(false);
         };
 
         const attemptPlay = () => {
@@ -218,7 +232,7 @@ export default function RealPlayer() {
         };
 
         if (forceNative || isNativeMode || !mpegts.getFeatureList().mseLivePlayback) {
-          video.src = url;
+          video.src = finalUrl;
           attemptPlay();
           return;
         }
@@ -227,7 +241,7 @@ export default function RealPlayer() {
           const player = mpegts.createPlayer({ 
             type: 'mpegts', 
             isLive: true, 
-            url: url, 
+            url: finalUrl, 
             cors: true 
           }, {
             enableWorker: true,
@@ -239,74 +253,39 @@ export default function RealPlayer() {
           player.load();
           attemptPlay();
         } catch (e) {
-          video.src = url;
+          video.src = finalUrl;
           attemptPlay();
         }
         return;
       }
 
-      // باقي أنواع الروابط
-      const getYouTubeId = (url: string) => {
+      // أنواع الروابط الأخرى (YouTube, Twitch, Iframe...)
+      const getYouTubeId = (u: string) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regExp);
+        const match = u.match(regExp);
         return (match && match[2].length === 11) ? match[2] : null;
       };
-      const getTwitchChannel = (url: string) => {
-        const match = url.match(/(?:twitch\.tv\/)([a-zA-Z0-9_]+)/);
-        return match ? match[1] : null;
-      };
-      const getKickInfo = (url: string) => {
-        if (url.includes('.m3u8')) return null;
-        const videoMatch = url.match(/kick\.com\/video\/([a-zA-Z0-9-]+)/);
-        if (videoMatch) return { type: 'video', id: videoMatch[1] };
-        const channelMatch = url.match(/kick\.com\/([a-zA-Z0-9_]+)/);
-        if (channelMatch && channelMatch[1] !== 'video' && channelMatch[1] !== 'api') return { type: 'channel', id: channelMatch[1] };
-        return null;
-      };
-      const isFacebookUrl = (url: string) => url.includes("facebook.com") || url.includes("fb.watch");
-
-      const ytId = getYouTubeId(url);
-      const twitchChannel = getTwitchChannel(url);
-      const kickInfo = getKickInfo(url);
-      const isFB = isFacebookUrl(url);
-
-      if (kickInfo) {
-        const ifr = document.createElement("iframe");
-        const embedPath = kickInfo.type === 'video' ? `video/${kickInfo.id}` : kickInfo.id;
-        ifr.src = `https://player.kick.com/${embedPath}?autoplay=true&muted=${shouldUnmute ? 'false' : 'true'}`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
-        ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-      } else if (twitchChannel) {
-        const ifr = document.createElement("iframe");
-        ifr.src = `https://player.twitch.tv/?channel=${twitchChannel}&parent=${window.location.hostname}&autoplay=true&muted=${!shouldUnmute}`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
-        ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-      } else if (isFB) {
-        const ifr = document.createElement("iframe");
-        ifr.src = `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&autoplay=true&mute=${shouldUnmute ? "0" : "1"}&allowfullscreen=true&adapt_to_wrapper=true`;
-        ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; ifr.style.position = "absolute"; ifr.style.top = "0"; ifr.style.left = "0";
-        ifr.allow = "autoplay; clipboard-write; encrypted-media; picture-in-picture; web-share; fullscreen"; ifr.allowFullscreen = true;
-        container.appendChild(ifr);
-        setTimeout(() => setShowUnmuteHint(true), 2000);
-      } else if (ytId) {
+      
+      const ytId = getYouTubeId(originalUrl);
+      if (ytId) {
         const wrapper = document.createElement("div");
         wrapper.className = "youtube-crop-wrapper";
         const ifr = document.createElement("iframe");
-        const origin = window.location.origin;
-        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&autoplay=1&mute=${shouldUnmute ? "0" : "1"}&controls=1&enablejsapi=1&origin=${encodeURIComponent(origin)}`;
-        ifr.allow = "autoplay; fullscreen; picture-in-picture"; ifr.allowFullscreen = true;
-        ifr.setAttribute("referrerpolicy", "strict-origin-when-cross-origin");
+        ifr.src = `https://www.youtube.com/embed/${ytId}?rel=0&autoplay=1&mute=${shouldUnmute ? "0" : "1"}&controls=1`;
+        ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
         wrapper.appendChild(ifr);
         container.appendChild(wrapper);
-      } else if (url.includes("<iframe")) {
-        container.innerHTML = url.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
+        setLoading(false);
+        return;
+      }
+
+      if (originalUrl.includes("<iframe")) {
+        container.innerHTML = originalUrl.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
         const ifr = container.querySelector("iframe");
         if (ifr) { ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none"; }
       } else {
         const ifr = document.createElement("iframe");
-        ifr.src = url; 
+        ifr.src = originalUrl; 
         ifr.setAttribute("referrerpolicy", "no-referrer"); 
         ifr.allow = "autoplay; fullscreen"; ifr.allowFullscreen = true;
         ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
@@ -380,18 +359,28 @@ export default function RealPlayer() {
         setHasInteracted(true);
         setActiveIndex(index);
         setIsNativeMode(false);
-        buildPlayer(servers[index], false, true);
+        setIsUsingProxy(false);
+        buildPlayer(servers[index], false, true, false);
       }
     },
     [buildPlayer, servers]
   );
+
+  const toggleProxy = () => {
+    const newProxyState = !isUsingProxy;
+    setIsUsingProxy(newProxyState);
+    setHasInteracted(true);
+    if (servers[activeIndex]) {
+      buildPlayer(servers[activeIndex], isNativeMode, true, newProxyState);
+    }
+  };
 
   const toggleNativeMode = () => {
     const newMode = !isNativeMode;
     setIsNativeMode(newMode);
     setHasInteracted(true);
     if (servers[activeIndex]) {
-      setTimeout(() => buildPlayer(servers[activeIndex], newMode, true), 10);
+      buildPlayer(servers[activeIndex], newMode, true, isUsingProxy);
     }
   };
 
@@ -416,7 +405,7 @@ export default function RealPlayer() {
     else document.exitFullscreen();
   };
 
-  const isCurrentFB = servers[activeIndex] && servers[activeIndex].url.includes("facebook.com");
+  const isCurrentHttp = servers[activeIndex] && servers[activeIndex].url.startsWith("http:");
   const isCurrentStream = servers[activeIndex] && (servers[activeIndex].url.includes(".ts") || servers[activeIndex].url.includes("type=http") || servers[activeIndex].type === "ts");
 
   if (fetching) {
@@ -480,35 +469,27 @@ export default function RealPlayer() {
             </div>
           )}
 
-          {isMixedContent && !loading && !error && (
+          {isMixedContent && !loading && !error && !isUsingProxy && (
             <div className="absolute inset-0 z-20 bg-black/90 flex items-center justify-center p-4">
               <div className="bg-amber-500 text-black p-6 rounded-[2rem] flex flex-col gap-4 text-right shadow-2xl border-4 border-white/20 max-w-lg animate-in fade-in zoom-in duration-300">
                 <div className="flex items-center justify-between gap-4">
                   <ShieldAlert size={40} className="shrink-0" />
-                  <h3 className="text-xl font-black">تنبيه أمني: المتصفح يمنع البث</h3>
+                  <h3 className="text-xl font-black">المتصفح يمنع البث (HTTP)</h3>
                 </div>
-                <div className="h-px bg-black/10 w-full" />
                 <p className="text-sm font-bold leading-loose">
-                  هذا الرابط يعمل بنظام <code className="bg-black/10 px-1 rounded">http</code> القديم، وبما أن موقعك يعمل بنظام <code className="bg-black/10 px-1 rounded">https</code> الآمن، فإن المتصفح يمنعه تلقائياً.
+                  هذا الرابط يعمل بنظام <code className="bg-black/10 px-1 rounded">http</code>، وهو ما يمنعه المتصفح لعدم تشفيره.
                 </p>
-                <div className="bg-white/20 p-4 rounded-2xl space-y-2">
-                  <p className="font-black text-xs underline mb-2">الحل لتشغيل البث الآن:</p>
-                  <ol className="text-xs font-bold space-y-2 list-decimal list-inside">
-                    <li>اضغط على أيقونة القفل 🔒 أو الإعدادات بجانب رابط الموقع في الأعلى.</li>
-                    <li>اختر <span className="bg-black/10 px-1">إعدادات الموقع</span> (Site Settings).</li>
-                    <li>ابحث عن <span className="bg-black/10 px-1">المحتوى غير الآمن</span> (Insecure content).</li>
-                    <li>غير الخيار إلى <span className="underline font-black">سماح</span> (Allow).</li>
-                    <li>أعد تحميل الصفحة وسيعمل البث فوراً.</li>
-                  </ol>
+                <div className="flex flex-col gap-3">
+                  <button onClick={toggleProxy} className="w-full bg-black text-white py-3 rounded-xl font-black flex items-center justify-center gap-2 hover:scale-105 transition-transform">
+                    <Globe size={18} className="text-[#00e676]" /> تشغيل عبر بروكسي آمن (تلقائي)
+                  </button>
+                  <p className="text-[10px] text-center font-bold opacity-70">أو يمكنك السماح بالمحتوى غير الآمن من إعدادات القفل 🔒 بالأعلى</p>
                 </div>
-                <button onClick={() => window.location.reload()} className="w-full bg-black text-white py-3 rounded-xl font-black flex items-center justify-center gap-2 hover:scale-105 transition-transform">
-                  <RefreshCw size={18} /> تحديث الصفحة بعد الضبط
-                </button>
               </div>
             </div>
           )}
 
-          {showUnmuteHint && !loading && !isCurrentFB && (
+          {showUnmuteHint && !loading && (
             <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors" onClick={(e) => { e.stopPropagation(); handleUnmute(); }}>
               <Volume2 size={20} />
               <span className="font-black text-sm">انقر لتشغيل الصوت</span>
@@ -521,31 +502,49 @@ export default function RealPlayer() {
                 <AlertTriangle className="text-red-500 mx-auto mb-2" size={32} />
                 <p className="text-red-400 font-black text-sm">{error}</p>
               </div>
-              <button onClick={() => window.location.reload()} className="px-8 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2 mx-auto"><RefreshCw size={18} /> إعادة المحاولة</button>
+              <div className="flex gap-3">
+                <button onClick={() => window.location.reload()} className="px-6 py-3 bg-white/10 text-white rounded-xl font-bold flex items-center gap-2"><RefreshCw size={18} /> تحديث</button>
+                {isCurrentHttp && !isUsingProxy && (
+                  <button onClick={toggleProxy} className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold flex items-center gap-2"><Globe size={18} /> تجربة البروكسي</button>
+                )}
+              </div>
             </div>
           )}
         </div>
       </article>
 
-      {isCurrentStream && !loading && !error && (
-        <div className="mt-6 flex flex-col items-center gap-3">
+      <div className="mt-6 flex flex-wrap justify-center gap-4">
+        {isCurrentStream && !loading && !error && (
           <button 
             onClick={toggleNativeMode}
             className={cn(
-              "px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-lg",
+              "px-6 py-3 rounded-xl font-black text-xs flex items-center gap-2 transition-all shadow-lg",
               isNativeMode 
                 ? "bg-emerald-600 text-white shadow-emerald-500/20" 
                 : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10"
             )}
           >
-            <Zap size={18} className={isNativeMode ? "fill-white" : ""} />
-            {isNativeMode ? "الوضع المباشر مفعل (لحل مشكلة الصورة)" : "تشغيل كبث مباشر (إذا ظهر الصوت فقط)"}
+            <Zap size={16} className={isNativeMode ? "fill-white" : ""} />
+            {isNativeMode ? "وضع السرعة مفعل" : "تفعيل وضع السرعة القصوى"}
           </button>
-          <p className="text-[10px] text-slate-500 font-bold">استخدم هذا الخيار إذا كنت تسمع الصوت ولا ترى الصورة في روابط TS</p>
-        </div>
-      )}
+        )}
 
-      {/* قسم الكلمات المفتاحية (Tags) - صف واحد مع تمرير أفقي */}
+        {isCurrentHttp && !loading && (
+          <button 
+            onClick={toggleProxy}
+            className={cn(
+              "px-6 py-3 rounded-xl font-black text-xs flex items-center gap-2 transition-all shadow-lg",
+              isUsingProxy 
+                ? "bg-indigo-600 text-white shadow-indigo-500/20 border-indigo-400" 
+                : "bg-white/5 text-slate-400 border border-white/10 hover:bg-white/10"
+            )}
+          >
+            <Globe size={16} className={isUsingProxy ? "text-[#00e676]" : ""} />
+            {isUsingProxy ? "وضع البروكسي مفعل (رابط آمن)" : "تشغيل عبر رابط آمن (Proxy)"}
+          </button>
+        )}
+      </div>
+
       <div className="mt-8 w-full max-w-[1200px] overflow-x-auto no-scrollbar" dir="rtl">
         <div className="flex flex-nowrap justify-center gap-2 min-w-max px-4">
           {tags.map((tag, index) => (
@@ -558,7 +557,7 @@ export default function RealPlayer() {
 
       <footer className="w-full max-w-[1200px] mt-12 px-4 text-center" dir="rtl">
         <p className="text-[8px] text-slate-600 font-bold uppercase tracking-widest">
-          Koora Live Streaming Service - All Rights Reserved © 2026
+          Koora Live Streaming Service - Secure Proxy Tech Enabled © 2026
         </p>
       </footer>
 
