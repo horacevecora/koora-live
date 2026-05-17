@@ -41,7 +41,6 @@ export default function RealPlayer() {
   const mpegtsRef = useRef<any>(null);
   const monitorInterval = useRef<NodeJS.Timeout | null>(null);
   const lastTime = useRef<number>(0);
-  const retryCount = useRef<number>(0);
 
   const [servers, setServers] = useState<Server[]>([]);
   const [pageInfo, setPageInfo] = useState<PageInfo | null>(null);
@@ -87,23 +86,8 @@ export default function RealPlayer() {
     }
   }, []);
 
-  const startStallMonitor = (video: HTMLVideoElement) => {
-    if (monitorInterval.current) clearInterval(monitorInterval.current);
-    monitorInterval.current = setInterval(() => {
-      if (!video.paused && video.readyState >= 2) {
-        if (video.currentTime === lastTime.current) {
-          if (video.buffered.length > 0) {
-            const end = video.buffered.end(video.buffered.length - 1);
-            video.currentTime = end - 0.2;
-          }
-        }
-        lastTime.current = video.currentTime;
-      }
-    }, 2000);
-  };
-
   const buildPlayer = useCallback(
-    (server: Server, forceNative = false, shouldUnmute = hasInteracted, forceProxy = false) => {
+    (server: Server, forceNative = false, shouldUnmute = hasInteracted) => {
       const container = containerRef.current;
       if (!container) return;
 
@@ -113,25 +97,27 @@ export default function RealPlayer() {
       setShowUnmuteHint(false);
       setLoading(true);
       
-      let originalUrl = server.url.trim();
+      let rawUrl = server.url.trim();
       const isHttps = window.location.protocol === 'https:';
-      const isUrlHttp = originalUrl.startsWith('http:');
-      
-      // تطبيق تقنية البروكسي عند الطلب أو الفشل
-      let finalUrl = originalUrl;
-      if (forceProxy && isUrlHttp) {
-        finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(originalUrl)}`;
-      }
+      const isUrlHttp = rawUrl.startsWith('http:');
 
-      const isM3U8 = finalUrl.includes(".m3u8") || server.type === "m3u8";
+      // تحديد نوع الرابط
+      const isM3U8 = rawUrl.includes(".m3u8") || server.type === "m3u8";
       const isRawStream = (
-        finalUrl.includes("stream") || 
-        finalUrl.includes("type=http") || 
-        finalUrl.includes(".ts") || 
-        finalUrl.includes("extension=ts") ||
-        finalUrl.includes("live.php") ||
+        rawUrl.includes("stream") || 
+        rawUrl.includes("type=http") || 
+        rawUrl.includes(".ts") || 
+        rawUrl.includes("extension=ts") ||
+        rawUrl.includes("live.php") ||
         server.type === "ts"
       );
+
+      // تطبيق البروكسي استباقياً لروابط الـ HTTP على مواقع الـ HTTPS لروابط البث
+      let finalUrl = rawUrl;
+      if (isHttps && isUrlHttp && (isM3U8 || isRawStream)) {
+        finalUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(rawUrl)}`;
+        console.log("[Player] Applied Proxy:", finalUrl);
+      }
 
       if (isM3U8) {
         const video = document.createElement("video");
@@ -154,13 +140,9 @@ export default function RealPlayer() {
             setLoading(false);
             video.play().catch(() => { video.muted = true; video.play(); setShowUnmuteHint(true); });
           });
-          hls.on(Hls.Events.ERROR, (event, data) => {
-            if (data.fatal && !forceProxy && isUrlHttp) {
-              buildPlayer(server, forceNative, shouldUnmute, true); // محاولة بالبروكسي
-            } else if (data.fatal) {
-              setError("فشل تحميل البث");
-              setLoading(false);
-            }
+          hls.on(Hls.Events.ERROR, () => {
+            setError("فشل تحميل ملف M3U8");
+            setLoading(false);
           });
         }
         return;
@@ -175,14 +157,9 @@ export default function RealPlayer() {
 
         video.onplaying = () => { setLoading(false); setIsMixedContent(false); };
         video.onerror = () => {
-          // إذا فشل الرابط العادي وهو HTTP، جرب البروكسي فوراً
-          if (!forceProxy && isUrlHttp) {
-            buildPlayer(server, forceNative, shouldUnmute, true);
-          } else {
-            setIsMixedContent(isHttps && isUrlHttp); // أظهر التحذير فقط إذا فشل البروكسي أيضاً
-            setError("خطأ في البث");
-            setLoading(false);
-          }
+          setIsMixedContent(isHttps && isUrlHttp && !finalUrl.includes('allorigins'));
+          setError("تعذر تشغيل البث المباشر");
+          setLoading(false);
         };
 
         const attemptPlay = () => {
@@ -191,13 +168,23 @@ export default function RealPlayer() {
 
         if (!forceNative && !isNativeMode && mpegts.getFeatureList().mseLivePlayback) {
           try {
-            const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: finalUrl, cors: true }, { enableStashBuffer: false });
+            const player = mpegts.createPlayer({ 
+              type: 'mpegts', 
+              isLive: true, 
+              url: finalUrl, 
+              cors: true 
+            }, { 
+              enableStashBuffer: false,
+              liveBufferLatencyChasing: true
+            });
             mpegtsRef.current = player;
             player.attachMediaElement(video);
             player.load();
             attemptPlay();
             return;
-          } catch (e) {}
+          } catch (e) {
+            console.error("[Player] mpegts error", e);
+          }
         }
         video.src = finalUrl;
         attemptPlay();
@@ -260,12 +247,12 @@ export default function RealPlayer() {
 
   const switchServer = useCallback((index: number) => {
     setHasInteracted(true); setActiveIndex(index); setIsNativeMode(false);
-    buildPlayer(servers[index], false, true, false);
+    buildPlayer(servers[index], false, true);
   }, [buildPlayer, servers]);
 
   const toggleNativeMode = () => {
     const newMode = !isNativeMode; setIsNativeMode(newMode); setHasInteracted(true);
-    buildPlayer(servers[activeIndex], newMode, true, false);
+    buildPlayer(servers[activeIndex], newMode, true);
   };
 
   const handleUnmute = () => {
