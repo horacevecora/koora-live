@@ -108,34 +108,22 @@ export default function RealPlayer() {
 
       container.innerHTML = "";
       destroy();
+      setLoading(true);
       setError(null);
       setShowUnmuteHint(false);
+      setIsMixedContent(false);
       
       let url = server.url.trim();
       const isHttps = window.location.protocol === 'https:';
       const isUrlHttp = url.startsWith('http:');
       
-      // اكتشاف Mixed Content فوراً
       if (isHttps && isUrlHttp) {
         setIsMixedContent(true);
-        setLoading(false); // إيقاف اللودينج لإظهار التحذير
-        return; // عدم محاولة تشغيل الرابط الممنوع
-      } else {
-        setIsMixedContent(false);
-        setLoading(true);
       }
 
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
       const isXtream = /\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/\d+$/.test(url) || /:\d+\/.*?\/\d+$/.test(url);
-      const isRawStream = (
-        url.includes("stream") || 
-        url.includes("type=http") || 
-        url.includes(".ts") || 
-        url.includes("extension=ts") ||
-        url.includes("live.php") ||
-        isXtream || 
-        server.type === "ts"
-      );
+      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes(".ts") || isXtream || server.type === "ts");
 
       if (isM3U8) {
         const video = document.createElement("video");
@@ -206,7 +194,11 @@ export default function RealPlayer() {
         video.onwaiting = () => setLoading(true);
         video.onplaying = () => setLoading(false);
         video.onerror = () => {
-          setError("خطأ في تشغيل الرابط المباشر.");
+          if (isHttps && isUrlHttp) {
+            setError("المتصفح يمنع تشغيل روابط HTTP على موقع آمن. يرجى اتباع التعليمات في التنبيه الأصفر بالأعلى.");
+          } else {
+            setError("خطأ في تشغيل الرابط المباشر.");
+          }
           setLoading(false);
         };
 
@@ -225,35 +217,35 @@ export default function RealPlayer() {
           });
         };
 
-        if (!forceNative && !isNativeMode && mpegts.getFeatureList().mseLivePlayback) {
-          try {
-            const player = mpegts.createPlayer({ 
-              type: 'mpegts', 
-              isLive: true, 
-              url: url, 
-              cors: true 
-            }, {
-              enableWorker: true,
-              enableStashBuffer: false,
-              stashInitialSize: 128,
-              lazyLoad: false,
-              liveBufferLatencyChasing: true
-            });
-            mpegtsRef.current = player;
-            player.attachMediaElement(video);
-            player.load();
-            attemptPlay();
-            return;
-          } catch (e) {
-            console.error("mpegts player creation failed, falling back to native", e);
-          }
+        if (forceNative || isNativeMode || !mpegts.getFeatureList().mseLivePlayback) {
+          video.src = url;
+          attemptPlay();
+          return;
         }
-        
-        video.src = url;
-        attemptPlay();
+
+        try {
+          const player = mpegts.createPlayer({ 
+            type: 'mpegts', 
+            isLive: true, 
+            url: url, 
+            cors: true 
+          }, {
+            enableWorker: true,
+            enableStashBuffer: false,
+            stashInitialSize: 128
+          });
+          mpegtsRef.current = player;
+          player.attachMediaElement(video);
+          player.load();
+          attemptPlay();
+        } catch (e) {
+          video.src = url;
+          attemptPlay();
+        }
         return;
       }
 
+      // باقي أنواع الروابط
       const getYouTubeId = (url: string) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
@@ -425,12 +417,7 @@ export default function RealPlayer() {
   };
 
   const isCurrentFB = servers[activeIndex] && servers[activeIndex].url.includes("facebook.com");
-  const isCurrentStream = servers[activeIndex] && (
-    servers[activeIndex].url.includes(".ts") || 
-    servers[activeIndex].url.includes("type=http") || 
-    servers[activeIndex].url.includes("extension=ts") ||
-    servers[activeIndex].type === "ts"
-  );
+  const isCurrentStream = servers[activeIndex] && (servers[activeIndex].url.includes(".ts") || servers[activeIndex].url.includes("type=http") || servers[activeIndex].type === "ts");
 
   if (fetching) {
     return (
@@ -486,14 +473,14 @@ export default function RealPlayer() {
         <div className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden" onClick={handleUnmute}>
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
           
-          {loading && !isMixedContent && (
+          {loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10">
               <div className="w-12 h-12 rounded-full border-4 border-indigo-500/20 border-t-indigo-500 animate-spin" />
               <p className="mt-4 text-slate-300 text-sm font-bold">جارٍ استقرار البث...</p>
             </div>
           )}
 
-          {isMixedContent && (
+          {isMixedContent && !loading && !error && (
             <div className="absolute inset-0 z-20 bg-black/90 flex items-center justify-center p-4">
               <div className="bg-amber-500 text-black p-6 rounded-[2rem] flex flex-col gap-4 text-right shadow-2xl border-4 border-white/20 max-w-lg animate-in fade-in zoom-in duration-300">
                 <div className="flex items-center justify-between gap-4">
@@ -521,14 +508,14 @@ export default function RealPlayer() {
             </div>
           )}
 
-          {showUnmuteHint && !loading && !isCurrentFB && !isMixedContent && (
+          {showUnmuteHint && !loading && !isCurrentFB && (
             <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer hover:bg-indigo-500 transition-colors" onClick={(e) => { e.stopPropagation(); handleUnmute(); }}>
               <Volume2 size={20} />
               <span className="font-black text-sm">انقر لتشغيل الصوت</span>
             </div>
           )}
 
-          {error && !loading && !isMixedContent && (
+          {error && !loading && (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center">
               <div className="bg-red-500/10 p-4 rounded-2xl border border-red-500/20 mb-4 max-w-md">
                 <AlertTriangle className="text-red-500 mx-auto mb-2" size={32} />
@@ -540,7 +527,7 @@ export default function RealPlayer() {
         </div>
       </article>
 
-      {isCurrentStream && !loading && !error && !isMixedContent && (
+      {isCurrentStream && !loading && !error && (
         <div className="mt-6 flex flex-col items-center gap-3">
           <button 
             onClick={toggleNativeMode}
@@ -558,7 +545,7 @@ export default function RealPlayer() {
         </div>
       )}
 
-      {/* قسم الكلمات المفتاحية (Tags) */}
+      {/* قسم الكلمات المفتاحية (Tags) - صف واحد مع تمرير أفقي */}
       <div className="mt-8 w-full max-w-[1200px] overflow-x-auto no-scrollbar" dir="rtl">
         <div className="flex flex-nowrap justify-center gap-2 min-w-max px-4">
           {tags.map((tag, index) => (
