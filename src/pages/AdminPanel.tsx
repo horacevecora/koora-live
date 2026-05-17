@@ -380,7 +380,22 @@ const AdminPanel = () => {
                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {servers.map((s, i) => (
                     <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl group hover:border-indigo-500/30 transition-all">
-                      <div className="flex-grow text-right"><div className="font-black text-sm">{s.name}</div><div className="text-[10px] text-slate-500 truncate max-w-[300px]">{s.url}</div></div>
+                      <div className="flex-grow text-right">
+                        <div className="font-black text-sm">{s.name}</div>
+                        {s.url.startsWith('<iframe') ? (
+                          <div className="text-[10px] text-slate-500 truncate max-w-[300px]">{s.url}</div>
+                        ) : (
+                          <a 
+                            href={s.url} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-[10px] text-slate-400 truncate max-w-[300px] hover:text-indigo-400 hover:underline transition-colors block"
+                            title="فتح الرابط الأصلي للقناة"
+                          >
+                            {s.url}
+                          </a>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1 shrink-0">
                         <div className="flex flex-col gap-1 mr-2"><button onClick={() => moveChannel(i, 'up')} className="p-1 text-slate-500 hover:text-white" disabled={i === 0}><ChevronUp size={14} /></button><button onClick={() => moveChannel(i, 'down')} className="p-1 text-slate-500 hover:text-white" disabled={i === servers.length - 1}><ChevronDown size={14} /></button></div>
                         <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
