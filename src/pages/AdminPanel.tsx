@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Trash2, Edit2, Home, Layout, ExternalLink, Code, Loader2, Lock, LogOut, Save, Mail, Key } from "lucide-react";
+import { Trash2, Edit2, Home, Layout, ExternalLink, Code, Loader2, Lock, LogOut, Save, ShieldCheck } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,8 +31,8 @@ const AdminPanel = () => {
   const [authLoading, setAuthLoading] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  // حقل الكود فقط
+  const [accessCode, setAccessCode] = useState("");
 
   const [pages, setPages] = useState<Page[]>([]);
   const [activePageId, setActivePageId] = useState<string | null>(null);
@@ -67,11 +67,18 @@ const AdminPanel = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    
+    // تسجيل الدخول باستخدام الكود ككلمة مرور وبريد افتراضي
+    // ملاحظة: يجب أن يكون هناك مستخدم بهذا البريد في Supabase Auth
+    const { error } = await supabase.auth.signInWithPassword({ 
+      email: "admin@koora.com", 
+      password: accessCode 
+    });
+
     if (error) {
-      showError("خطأ: " + error.message);
+      showError("كود الدخول غير صحيح");
     } else {
-      showSuccess("تم تسجيل الدخول");
+      showSuccess("تم الدخول بنجاح");
     }
     setIsLoading(false);
   };
@@ -122,20 +129,14 @@ const AdminPanel = () => {
     }
   };
 
-  const detectType = (url: string): string => {
-    const lowUrl = url.toLowerCase();
-    if (lowUrl.includes('.m3u8')) return 'm3u8';
-    if (lowUrl.includes('.ts') || lowUrl.includes('type=http')) return 'ts';
-    if (lowUrl.includes('youtube.com') || lowUrl.includes('youtu.be')) return 'youtube';
-    if (lowUrl.includes('facebook.com') || lowUrl.includes('fb.watch')) return 'facebook';
-    if (lowUrl.includes('twitch.tv')) return 'twitch';
-    if (lowUrl.includes('kick.com')) return 'kick';
-    return 'iframe';
-  };
-
   const handleSubmit = async () => {
     if (!newName || !newUrl || !activePageId) return;
-    const type = detectType(newUrl);
+    const lowUrl = newUrl.toLowerCase();
+    let type = 'iframe';
+    if (lowUrl.includes('.m3u8')) type = 'm3u8';
+    else if (lowUrl.includes('.ts') || lowUrl.includes('type=http')) type = 'ts';
+    else if (lowUrl.includes('youtube.com')) type = 'youtube';
+
     if (editingId) {
       const { error } = await supabase.from('servers').update({ name: newName, url: newUrl, type }).eq('id', editingId);
       if (error) showError("فشل التحديث");
@@ -177,17 +178,27 @@ const AdminPanel = () => {
   if (!session) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center p-4 font-sans" dir="rtl">
-        <Card className="w-full max-w-md bg-[#0f172a] border-slate-800 text-white shadow-2xl">
-          <CardHeader className="text-center space-y-2">
-            <Lock className="text-indigo-500 mx-auto mb-2" size={32} />
+        <Card className="w-full max-w-sm bg-[#0f172a] border-slate-800 text-white shadow-2xl overflow-hidden border-t-4 border-t-indigo-600">
+          <CardHeader className="text-center space-y-2 pt-8">
+            <div className="mx-auto w-16 h-16 bg-indigo-600/10 rounded-full flex items-center justify-center mb-2 border border-indigo-500/20">
+              <Lock className="text-indigo-500" size={28} />
+            </div>
             <CardTitle className="text-2xl font-black">لوحة التحكم</CardTitle>
-            <CardDescription className="text-slate-400">سجل دخولك لإدارة القنوات والأكواد</CardDescription>
+            <CardDescription className="text-slate-400 font-bold">يرجى إدخال كود الوصول للمتابعة</CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <Input type="email" placeholder="البريد الإلكتروني" value={email} onChange={e => setEmail(e.target.value)} className="bg-slate-900 border-slate-700 text-right" required />
-              <Input type="password" placeholder="كلمة المرور" value={password} onChange={e => setPassword(e.target.value)} className="bg-slate-900 border-slate-700 text-right" required />
-              <Button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold">
+          <CardContent className="p-8">
+            <form onSubmit={handleLogin} className="space-y-6">
+              <div className="space-y-2">
+                <Input 
+                  type="password" 
+                  placeholder="كود الدخول (simo)" 
+                  value={accessCode} 
+                  onChange={e => setAccessCode(e.target.value)} 
+                  className="bg-slate-900 border-slate-700 h-12 text-center text-lg font-bold" 
+                  required 
+                />
+              </div>
+              <Button type="submit" disabled={isLoading} className="w-full bg-indigo-600 hover:bg-indigo-700 font-black h-12 text-lg">
                 {isLoading ? <Loader2 className="animate-spin" /> : "دخول"}
               </Button>
             </form>
@@ -198,27 +209,31 @@ const AdminPanel = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans" dir="rtl">
-      <div className="max-w-7xl mx-auto space-y-8">
-        <div className="flex justify-between items-center bg-[#0f172a]/40 p-6 rounded-3xl border border-white/5">
-          <h1 className="text-2xl font-black">لوحة التحكم</h1>
+    <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans flex flex-col" dir="rtl">
+      <div className="max-w-7xl mx-auto w-full space-y-8 flex-grow">
+        
+        <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-[#0f172a]/40 p-6 rounded-3xl border border-white/5">
+          <div className="flex items-center gap-3">
+            <ShieldCheck className="text-[#00e676]" size={24} />
+            <h1 className="text-2xl font-black">لوحة الإدارة</h1>
+          </div>
           <div className="flex gap-2">
-            <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900 border-slate-800 text-white text-xs">الرئيسية</Button>
-            <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 text-xs">خروج</Button>
+            <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900 border-slate-800 text-white text-xs font-bold">الرئيسية</Button>
+            <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 text-xs font-bold">خروج</Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-4 space-y-8">
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white">
-              <CardHeader><CardTitle className="text-lg font-bold">الصفحات</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900 border-slate-700 text-right" />
-                <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900 border-slate-700 text-right" />
-                <Button onClick={addPage} className="w-full bg-indigo-600">إنشاء</Button>
-                <div className="space-y-2 pt-4">
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white rounded-3xl overflow-hidden">
+              <CardHeader className="border-b border-white/5"><CardTitle className="text-lg font-bold">إدارة الصفحات</CardTitle></CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900 border-slate-700 h-11 text-right" />
+                <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900 border-slate-700 h-11 text-right" />
+                <Button onClick={addPage} className="w-full bg-indigo-600 font-bold">إنشاء صفحة</Button>
+                <div className="space-y-2 pt-4 border-t border-white/5">
                   {pages.map(p => (
-                    <div key={p.id} onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} className={`w-full flex items-center justify-between px-4 h-12 font-bold rounded-md cursor-pointer ${activePageId === p.id ? 'bg-indigo-600' : 'bg-slate-900/50 border border-slate-800'}`}>
+                    <div key={p.id} onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} className={`w-full flex items-center justify-between px-4 h-12 font-bold rounded-xl cursor-pointer transition-all ${activePageId === p.id ? 'bg-indigo-600 shadow-lg' : 'bg-slate-900/50 border border-slate-800'}`}>
                       <div className="flex items-center gap-2">
                         <ExternalLink size={14} onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} />
                         {p.slug !== 'default' && <Trash2 size={14} className="text-red-400" onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} />}
@@ -232,24 +247,26 @@ const AdminPanel = () => {
           </div>
 
           <div className="lg:col-span-8 space-y-8">
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white">
-              <CardHeader><CardTitle className="text-xl font-bold">سيرفرات: {activePageName}</CardTitle></CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex flex-col md:flex-row gap-3">
-                  <Input placeholder="اسم السيرفر" value={newName} onChange={e => setNewName(e.target.value)} className="bg-slate-900 border-slate-700 text-right" />
-                  <Input placeholder="الرابط" value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900 border-slate-700 text-right" />
-                  <Button onClick={handleSubmit} className="bg-indigo-600 px-8">حفظ</Button>
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white rounded-3xl overflow-hidden">
+              <CardHeader className="border-b border-white/5"><CardTitle className="text-xl font-black">سيرفرات البث لـ: {activePageName}</CardTitle></CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <Input placeholder="اسم السيرفر" value={newName} onChange={e => setNewName(e.target.value)} className="bg-slate-900 border-slate-700 h-12 text-right" />
+                  <Input placeholder="الرابط" value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900 border-slate-700 h-12 text-right" />
                 </div>
+                <Button onClick={handleSubmit} className="w-full bg-indigo-600 font-black h-12 text-lg">
+                  {editingId ? 'تحديث السيرفر' : 'إضافة السيرفر'}
+                </Button>
                 <div className="space-y-3">
                   {servers.map((s) => (
-                    <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl">
+                    <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-2xl group">
                       <div className="text-right">
                         <div className="font-black text-sm">{s.name}</div>
-                        <div className="text-[10px] text-slate-500 truncate max-w-[200px]">{s.url}</div>
+                        <div className="text-[10px] text-slate-500 truncate max-w-[300px]">{s.url}</div>
                       </div>
                       <div className="flex gap-1">
-                        <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2"><Edit2 size={16} /></button>
-                        <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-red-500"><Trash2 size={16} /></button>
+                        <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-400 hover:text-indigo-400"><Edit2 size={18} /></button>
+                        <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-slate-400 hover:text-red-500"><Trash2 size={18} /></button>
                       </div>
                     </div>
                   ))}
@@ -257,12 +274,12 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
-            <Card className="bg-[#0f172a]/40 border-slate-800 text-white">
-              <CardHeader><CardTitle className="text-xl font-bold">الأكواد والإعلانات (Ads/SEO)</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <Textarea placeholder="ألصق الكود هنا..." value={externalScripts} onChange={(e) => setExternalScripts(e.target.value)} className="bg-slate-900 border-slate-700 min-h-[200px] text-left" dir="ltr" />
-                <Button onClick={saveExternalScripts} disabled={isLoading} className="w-full bg-emerald-600 font-black h-12">
-                  {isLoading ? <Loader2 className="animate-spin" /> : <><Save size={18} className="ml-2" /> حفظ الكود</>}
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white rounded-3xl overflow-hidden">
+              <CardHeader className="border-b border-white/5"><CardTitle className="text-xl font-black flex items-center gap-2"><Code size={20} /> الأكواد والإعلانات</CardTitle></CardHeader>
+              <CardContent className="p-6 space-y-4">
+                <Textarea placeholder="ألصق الكود هنا..." value={externalScripts} onChange={(e) => setExternalScripts(e.target.value)} className="bg-slate-900 border-slate-700 min-h-[250px] text-left font-mono text-xs" dir="ltr" />
+                <Button onClick={saveExternalScripts} disabled={isLoading} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-14 text-lg">
+                  {isLoading ? <Loader2 className="animate-spin" /> : "حفظ وتفعيل الأكواد"}
                 </Button>
               </CardContent>
             </Card>
