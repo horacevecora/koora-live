@@ -89,10 +89,14 @@ export default function RealPlayer() {
     monitorInterval.current = setInterval(() => {
       if (!video.paused && video.readyState >= 2) {
         if (video.currentTime === lastTime.current) {
+          // البث متوقف (Stall)
           if (video.buffered.length > 0) {
             const end = video.buffered.end(video.buffered.length - 1);
-            video.currentTime = end - 0.2;
+            video.currentTime = end - 0.1;
           }
+        } else {
+          // البث يعمل، تأكد من إخفاء اللودينج
+          setLoading(false);
         }
         lastTime.current = video.currentTime;
       }
@@ -115,7 +119,6 @@ export default function RealPlayer() {
       const isHttps = window.location.protocol === 'https:';
       const isUrlHttp = finalUrl.startsWith('http:');
       
-      // إذا كان الرابط HTTP ونحن على HTTPS، نستخدم البروكسي لتجنب المنع
       if (isHttps && isUrlHttp) {
         console.log("Mixed content detected, using cloud proxy...");
         finalUrl = `https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/stream-proxy?url=${encodeURIComponent(finalUrl)}`;
@@ -156,15 +159,15 @@ export default function RealPlayer() {
           hls.loadSource(finalUrl);
           hls.attachMedia(video);
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
-            setLoading(false);
             video.play().catch(() => setShowUnmuteHint(true));
             startStallMonitor(video);
           });
+          hls.on(Hls.Events.FRAG_LOADED, () => setLoading(false));
           hls.on(Hls.Events.ERROR, (_, data) => { if (data.fatal) setLoading(false); });
         } else {
           video.src = finalUrl;
+          video.onplaying = () => setLoading(false);
           video.play().catch(() => setShowUnmuteHint(true));
-          setLoading(false);
         }
         return;
       }
@@ -179,22 +182,42 @@ export default function RealPlayer() {
         video.setAttribute("crossorigin", "anonymous");
         container.appendChild(video);
 
-        video.onwaiting = () => setLoading(true);
+        // مراقبة دقيقة لحالة اللودينج
+        video.ontimeupdate = () => {
+          if (video.currentTime > 0) setLoading(false);
+        };
         video.onplaying = () => setLoading(false);
+        video.onwaiting = () => {
+          // أظهر اللودينج فقط إذا تأخر البث فعلاً
+          setTimeout(() => {
+            if (video.readyState < 3) setLoading(true);
+          }, 1500);
+        };
         video.onerror = () => { setLoading(false); setError("فشل تحميل البث عبر البروكسي."); };
 
         const attemptPlay = () => {
-          video.play().then(() => { setLoading(false); if (video.muted) setShowUnmuteHint(true); }).catch(() => {
-            video.muted = true; video.play(); setShowUnmuteHint(true);
+          video.play().then(() => {
+            if (video.muted) setShowUnmuteHint(true);
+            startStallMonitor(video);
+          }).catch(() => {
+            video.muted = true;
+            video.play();
+            setShowUnmuteHint(true);
+            startStallMonitor(video);
           });
         };
 
         if (!forceNative && !isNativeMode && mpegts.getFeatureList().mseLivePlayback) {
           try {
             const player = mpegts.createPlayer({ type: 'mpegts', isLive: true, url: finalUrl, cors: true }, {
-              enableWorker: true, enableStashBuffer: false, liveBufferLatencyChasing: true
+              enableWorker: true, 
+              enableStashBuffer: false, 
+              liveBufferLatencyChasing: true,
+              autoCleanupSourceBuffer: true
             });
             mpegtsRef.current = player;
+            player.on(mpegts.Events.METADATA_ARRIVED, () => setLoading(false));
+            player.on(mpegts.Events.STATISTICS_INFO, () => setLoading(false));
             player.attachMediaElement(video);
             player.load();
             attemptPlay();
@@ -207,7 +230,6 @@ export default function RealPlayer() {
         return;
       }
 
-      // أنواع الروابط الأخرى (Iframe, YT, etc.)
       if (finalUrl.includes("<iframe")) {
         container.innerHTML = finalUrl.replace("<iframe", '<iframe referrerpolicy="no-referrer" allow="autoplay; fullscreen" allowfullscreen');
         const ifr = container.querySelector("iframe");
@@ -219,7 +241,7 @@ export default function RealPlayer() {
         ifr.style.width = "100%"; ifr.style.height = "100%"; ifr.style.border = "none";
         container.appendChild(ifr);
       }
-      setTimeout(() => setLoading(false), 1500);
+      setTimeout(() => setLoading(false), 2000);
     },
     [destroy, hasInteracted, isNativeMode]
   );
@@ -253,9 +275,10 @@ export default function RealPlayer() {
   const handleUnmute = () => {
     setHasInteracted(true);
     const v = containerRef.current?.querySelector('video');
-    if (v) { v.muted = false; v.play(); }
+    if (v) { v.muted = false; v.play().catch(()=>{}); }
     if (plyrRef.current) { plyrRef.current.muted = false; plyrRef.current.play(); }
     setShowUnmuteHint(false);
+    setLoading(false); // إخفاء اللودينج عند التفاعل
   };
 
   const isCurrentStream = servers[activeIndex] && (servers[activeIndex].url.includes(".ts") || servers[activeIndex].url.includes("live.php"));
@@ -289,7 +312,17 @@ export default function RealPlayer() {
 
         <div className="relative w-full bg-black aspect-video rounded-b-2xl overflow-hidden" onClick={handleUnmute}>
           <div ref={containerRef} className="absolute inset-0 flex items-center justify-center" />
-          {loading && <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/80 z-10"><Loader2 className="animate-spin text-indigo-500" size={40} /><p className="mt-4 text-slate-300 text-sm font-bold">جارٍ تشغيل البروكسي السحابي...</p></div>}
+          
+          {/* طبقة اللودينج تظهر فقط إذا كانت الحالة صحيحة والفيديو غير جاهز تماماً */}
+          {loading && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10 pointer-events-none">
+              <div className="flex flex-col items-center bg-black/40 p-8 rounded-3xl border border-white/5">
+                <Loader2 className="animate-spin text-indigo-500 mb-4" size={40} />
+                <p className="text-slate-300 text-sm font-bold animate-pulse">جارٍ الاتصال بالبث المباشر...</p>
+              </div>
+            </div>
+          )}
+
           {showUnmuteHint && !loading && <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white px-6 py-3 rounded-full flex items-center gap-3 shadow-2xl animate-bounce cursor-pointer" onClick={handleUnmute}><Volume2 size={20} /><span className="font-black text-sm">انقر لتشغيل الصوت</span></div>}
           {error && <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 z-10 p-6 text-center"><AlertTriangle className="text-red-500 mb-2" size={32} /><p className="text-red-400 font-black text-sm">{error}</p></div>}
         </div>
@@ -297,8 +330,8 @@ export default function RealPlayer() {
 
       {isCurrentStream && !loading && (
         <div className="mt-6 flex flex-col items-center gap-3">
-          <button onClick={() => { setIsNativeMode(!isNativeMode); buildPlayer(servers[activeIndex], !isNativeMode, true); }} className={cn("px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all", isNativeMode ? "bg-emerald-600" : "bg-white/5 text-slate-400")}>
-            <Zap size={18} /> {isNativeMode ? "وضع البروكسي المباشر" : "تفعيل معالجة الصورة الذكية"}
+          <button onClick={() => { setIsNativeMode(!isNativeMode); buildPlayer(servers[activeIndex], !isNativeMode, true); }} className={cn("px-6 py-3 rounded-xl font-black text-sm flex items-center gap-2 transition-all shadow-lg", isNativeMode ? "bg-emerald-600" : "bg-white/5 text-slate-400 border border-white/10")}>
+            <Zap size={18} /> {isNativeMode ? "تم تفعيل البروكسي المباشر" : "تفعيل معالجة الصورة الذكية (TS)"}
           </button>
         </div>
       )}
