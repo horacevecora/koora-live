@@ -7,53 +7,34 @@ const ExternalScripts = () => {
   useEffect(() => {
     const fetchAndInject = async () => {
       try {
-        // جلب الأكواد من الإعدادات
         const { data, error } = await supabase
           .from('site_settings')
           .select('value')
           .eq('key', 'external_scripts')
           .single();
 
-        if (error || !data?.value) {
-          console.log("[ExternalScripts] لا توجد أكواد خارجية لحقنها.");
-          return;
-        }
+        if (error || !data?.value) return;
 
-        console.log("[ExternalScripts] جاري حقن الأكواد الخارجية...");
-
-        // تحويل النص إلى عناصر DOM
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(data.value, 'text/html');
+        // استخدام Range لضمان معالجة السكربتات وتنفيذها بشكل صحيح تماماً كما في HTML الأصلي
+        const range = document.createRange();
+        range.selectNode(document.head);
+        const fragment = range.createContextualFragment(data.value);
         
-        // 1. حقن السكربتات
-        const scripts = doc.querySelectorAll('script');
+        // معالجة السكربتات بشكل خاص لضمان التنفيذ (لأن appendChild العادي للـ fragment قد لا ينفذ السكربتات في بعض المتصفحات)
+        const scripts = fragment.querySelectorAll('script');
         scripts.forEach(oldScript => {
           const newScript = document.createElement('script');
-          
-          // نسخ كافة الخصائص (src, async, defer, data-zone, etc)
-          Array.from(oldScript.attributes).forEach(attr => {
-            newScript.setAttribute(attr.name, attr.value);
-          });
-          
-          // نسخ المحتوى الداخلي إذا وجد
-          if (oldScript.textContent) {
-            newScript.textContent = oldScript.textContent;
-          }
-          
-          // الحقن المباشر في الـ head لضمان رؤيتها من قبل أدوات التحقق
+          Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+          newScript.textContent = oldScript.textContent;
           document.head.appendChild(newScript);
+          oldScript.remove(); // إزالة القديم من الـ fragment
         });
 
-        // 2. حقن الميتا والستايلات والروابط الأخرى
-        const otherElements = doc.querySelectorAll('link, meta, style');
-        otherElements.forEach(el => {
-          document.head.appendChild(el.cloneNode(true));
-        });
-
-        console.log("[ExternalScripts] تم حقن الأكواد بنجاح.");
+        // إضافة ما تبقى (Meta, Link, Style)
+        document.head.appendChild(fragment);
 
       } catch (err) {
-        console.error("[ExternalScripts] خطأ في حقن الأكواد:", err);
+        console.error("[ExternalScripts] Error:", err);
       }
     };
 
