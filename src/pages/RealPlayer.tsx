@@ -319,6 +319,7 @@ export default function RealPlayer() {
 
   useEffect(() => {
     const loadData = async () => {
+      setIsInitialized(false);
       setFetching(true);
       try {
         const { data: pageData, error: pageError } = await supabase
