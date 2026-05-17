@@ -15,24 +15,34 @@ const ExternalScripts = () => {
 
         if (error || !data?.value) return;
 
-        // تحويل النص إلى عناصر HTML وحقنها في الـ head
+        // إنشاء حاوية مخفية للأكواد الخارجية لتنظيمها
+        let container = document.getElementById('dyad-external-scripts');
+        if (container) container.remove();
+        
+        container = document.createElement('div');
+        container.id = 'dyad-external-scripts';
+        container.style.display = 'none';
+        document.head.appendChild(container);
+
         const range = document.createRange();
         const documentFragment = range.createContextualFragment(data.value);
         
-        // حقن كل سكريبت بشكل صحيح لضمان تنفيذه
+        // حقن السكريبتات بطريقة تضمن التنفيذ الفوري
         const scripts = documentFragment.querySelectorAll('script');
         scripts.forEach(oldScript => {
           const newScript = document.createElement('script');
           Array.from(oldScript.attributes).forEach(attr => {
             newScript.setAttribute(attr.name, attr.value);
           });
-          newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-          document.head.appendChild(newScript);
+          if (oldScript.innerHTML) {
+            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+          }
+          container?.appendChild(newScript);
         });
 
-        // حقن باقي العناصر (مثل link أو meta) إذا وجدت
+        // حقن الميتا والستايلات
         const otherElements = documentFragment.querySelectorAll('link, meta, style');
-        otherElements.forEach(el => document.head.appendChild(el));
+        otherElements.forEach(el => container?.appendChild(el));
 
       } catch (err) {
         console.error("Error injecting external scripts:", err);
