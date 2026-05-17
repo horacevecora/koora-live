@@ -47,10 +47,11 @@ const Matches = () => {
           <span className="font-bold text-sm">الرئيسية</span>
         </button>
         
-        <div className="flex items-center gap-1 text-[#00e676] font-black text-xl italic">
+        {/* اسم الموقع قابل للضغط للعودة للرئيسية */}
+        <Link to="/" className="flex items-center gap-1 text-[#00e676] font-black text-xl italic hover:opacity-80 transition-opacity">
           <span>Koora</span>
           <span className="text-white">Live</span>
-        </div>
+        </Link>
 
         <button 
           onClick={() => navigate('/real.html')}
