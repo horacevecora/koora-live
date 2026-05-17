@@ -146,19 +146,14 @@ const AdminPanel = () => {
   };
 
   const saveScriptsToDB = async (newList: ScriptSnippet[]) => {
-    // 1. حفظ القائمة المنظمة كـ JSON
     await supabase.from('site_settings').upsert({ key: 'managed_scripts', value: JSON.stringify(newList) }, { onConflict: 'key' });
-    
-    // 2. تجميع الأكواد المفعلة فقط في نص واحد وتحديث external_scripts
     const combinedScripts = newList.filter(s => s.active).map(s => s.code).join('\n\n');
     await supabase.from('site_settings').upsert({ key: 'external_scripts', value: combinedScripts }, { onConflict: 'key' });
-    
     setScriptList(newList);
   };
 
   const handleAddOrUpdateScript = async () => {
     if (!newScriptCode) return;
-    
     let newList = [...scriptList];
     if (editingScriptId) {
       newList = newList.map(s => s.id === editingScriptId ? { ...s, name: scriptName || "كود بدون اسم", code: newScriptCode } : s);
@@ -172,7 +167,6 @@ const AdminPanel = () => {
       };
       newList.push(newEntry);
     }
-
     await saveScriptsToDB(newList);
     setScriptName("");
     setNewScriptCode("");
@@ -198,7 +192,6 @@ const AdminPanel = () => {
     window.scrollTo({ top: document.querySelector('.ads-section')?.getBoundingClientRect().top ?? 0 + window.scrollY - 100, behavior: 'smooth' });
   };
 
-  // وظائف الصفحات والقنوات (كما هي)
   const addPage = async () => {
     if (!newPageName || !newPageSlug) return;
     const { data, error } = await supabase.from('pages').insert([{ name: newPageName, slug: newPageSlug }]).select().single();
@@ -333,8 +326,6 @@ const AdminPanel = () => {
   return (
     <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans flex flex-col" dir="rtl">
       <div className="max-w-7xl mx-auto w-full space-y-8 flex-grow">
-        
-        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية</h1>
           <div className="flex gap-2 flex-wrap justify-center">
@@ -346,8 +337,6 @@ const AdminPanel = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          
-          {/* Right Column: Pages & Bulk */}
           <div className="lg:col-span-4 space-y-8">
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle></CardHeader>
@@ -370,7 +359,6 @@ const AdminPanel = () => {
                 </div>
               </CardContent>
             </Card>
-
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -380,9 +368,7 @@ const AdminPanel = () => {
             </Card>
           </div>
 
-          {/* Left Column: Channels & SEO */}
           <div className="lg:col-span-8 space-y-8">
-            
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader><CardTitle className="text-xl font-bold text-center">تعديل قنوات: <span className="text-indigo-400">{activePageName}</span></CardTitle></CardHeader>
               <CardContent className="space-y-6">
@@ -406,40 +392,18 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
-            {/* نظام إدارة الأكواد الجديد (Ads/SEO) */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl ads-section">
               <CardHeader>
-                <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
-                  <Code size={20} /> إعدادات الأكواد (Ads/SEO)
-                </CardTitle>
+                <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2"><Code size={20} /> إعدادات الأكواد (Ads/SEO)</CardTitle>
                 <p className="text-center text-[10px] text-slate-500">أضف أكواد التحقق أو الإعلانات هنا وسيتم تفعيلها تلقائياً</p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Input 
-                  placeholder="اسم تعريفي للكود (مثلاً: إعلان منبثق 1)" 
-                  value={scriptName} 
-                  onChange={e => setScriptName(e.target.value)} 
-                  className="bg-slate-900/80 border-slate-700 h-10 text-right" 
-                />
-                <Textarea 
-                  placeholder="ألصق كود الجافا سكريبت أو الميتا هنا..." 
-                  value={newScriptCode}
-                  onChange={(e) => setNewScriptCode(e.target.value)}
-                  className="bg-slate-900/80 border-slate-700 min-h-[150px] font-mono text-xs text-right"
-                  dir="ltr"
-                />
-                <Button onClick={handleAddOrUpdateScript} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg">
-                  {editingScriptId ? 'تحديث الكود المحفوظ' : 'حفظ الكود في السحابة'}
-                </Button>
-
-                {/* قائمة الأكواد المضافة للتحكم بها */}
+                <Input placeholder="اسم تعريفي للكود (مثلاً: إعلان منبثق 1)" value={scriptName} onChange={e => setScriptName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                <Textarea placeholder="ألصق كود الجافا سكريبت أو الميتا هنا..." value={newScriptCode} onChange={(e) => setNewScriptCode(e.target.value)} className="bg-slate-900/80 border-slate-700 min-h-[150px] font-mono text-xs text-right" dir="ltr" />
+                <Button onClick={handleAddOrUpdateScript} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg">{editingScriptId ? 'تحديث الكود المحفوظ' : 'حفظ الكود في السحابة'}</Button>
                 <div className="pt-6 space-y-3">
-                  <h3 className="text-sm font-bold text-slate-400 border-b border-slate-800 pb-2 flex items-center gap-2">
-                    <ListPlus size={16} /> قائمة الأكواد المضافة
-                  </h3>
-                  {scriptList.length === 0 ? (
-                    <p className="text-center text-xs text-slate-600 py-4">لا توجد أكواد محفوظة حالياً</p>
-                  ) : (
+                  <h3 className="text-sm font-bold text-slate-400 border-b border-slate-800 pb-2 flex items-center gap-2"><ListPlus size={16} /> قائمة الأكواد المضافة</h3>
+                  {scriptList.length === 0 ? (<p className="text-center text-xs text-slate-600 py-4">لا توجد أكواد محفوظة حالياً</p>) : (
                     <div className="space-y-2">
                       {scriptList.map(script => (
                         <div key={script.id} className={`flex items-center justify-between p-3 rounded-lg border transition-all ${script.active ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-900/20 border-slate-900 opacity-50'}`}>
@@ -450,10 +414,7 @@ const AdminPanel = () => {
                               {script.active ? <CheckCircle2 size={18} /> : <Circle size={18} />}
                             </button>
                           </div>
-                          <div className="text-right">
-                            <span className="text-sm font-bold block">{script.name}</span>
-                            <span className="text-[9px] text-slate-500 font-mono">ID: {script.id.slice(0,8)}</span>
-                          </div>
+                          <div className="text-right"><span className="text-sm font-bold block">{script.name}</span><span className="text-[9px] text-slate-500 font-mono">ID: {script.id.slice(0,8)}</span></div>
                         </div>
                       ))}
                     </div>
@@ -462,7 +423,6 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
-            {/* Virtual Files */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader><CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2"><FileCode size={20} /> إدارة ملفات الـ Service Worker</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -476,11 +436,11 @@ const AdminPanel = () => {
                         <button onClick={() => deleteFile(file.id)} className="text-slate-500 hover:text-red-500 p-1" title="حذف"><Trash2 size={16} /></button>
                         <button onClick={() => { setNewFileName(file.filename); setNewFileContent(file.content); }} className="text-slate-500 hover:text-indigo-400 p-1" title="تعديل"><Edit2 size={16} /></button>
                         <a 
-                          href={`https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/site-files?file=${file.filename}`} 
+                          href={`/${file.filename}`} 
                           target="_blank" 
                           rel="noreferrer"
                           className="text-slate-500 hover:text-emerald-400 p-1"
-                          title="معاينة الملف السحابي"
+                          title="معاينة الملف من موقعك"
                         >
                           <Eye size={16} />
                         </a>
@@ -493,7 +453,6 @@ const AdminPanel = () => {
             </Card>
           </div>
         </div>
-
         <div className="flex justify-center pt-8 pb-12"><Button onClick={() => navigate('/real.html')} className="bg-red-600 hover:bg-red-700 text-white font-black px-12 py-8 rounded-2xl text-xl shadow-2xl flex items-center gap-3"><XCircle size={28} /> إغلاق</Button></div>
       </div>
       <style dangerouslySetInnerHTML={{ __html: `.custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }`}} />
