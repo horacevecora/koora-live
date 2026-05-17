@@ -123,7 +123,15 @@ export default function RealPlayer() {
 
       const isM3U8 = url.includes(".m3u8") || server.type === "m3u8";
       const isXtream = /\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+\/\d+$/.test(url) || /:\d+\/.*?\/\d+$/.test(url);
-      const isRawStream = (url.includes("stream") || url.includes("type=http") || url.includes(".ts") || isXtream || server.type === "ts");
+      const isRawStream = (
+        url.includes("stream") || 
+        url.includes("type=http") || 
+        url.includes(".ts") || 
+        url.includes("extension=ts") ||
+        url.includes("live.php") ||
+        isXtream || 
+        server.type === "ts"
+      );
 
       if (isM3U8) {
         const video = document.createElement("video");
@@ -217,35 +225,38 @@ export default function RealPlayer() {
           });
         };
 
-        if (forceNative || isNativeMode || !mpegts.getFeatureList().mseLivePlayback) {
-          video.src = url;
-          attemptPlay();
-          return;
+        // تفعيل CORS المباشر عبر mpegts.js
+        if (!forceNative && !isNativeMode && mpegts.getFeatureList().mseLivePlayback) {
+          try {
+            const player = mpegts.createPlayer({ 
+              type: 'mpegts', 
+              isLive: true, 
+              url: url, 
+              cors: true // تفعيل CORS المباشر
+            }, {
+              enableWorker: true,
+              enableStashBuffer: false, // تعطيل التخزين لضمان البث المباشر الفوري
+              stashInitialSize: 128,
+              lazyLoad: false,
+              liveBufferLatencyChasing: true
+            });
+            mpegtsRef.current = player;
+            player.attachMediaElement(video);
+            player.load();
+            attemptPlay();
+            return;
+          } catch (e) {
+            console.error("mpegts player creation failed, falling back to native", e);
+          }
         }
-
-        try {
-          const player = mpegts.createPlayer({ 
-            type: 'mpegts', 
-            isLive: true, 
-            url: url, 
-            cors: true 
-          }, {
-            enableWorker: true,
-            enableStashBuffer: false,
-            stashInitialSize: 128
-          });
-          mpegtsRef.current = player;
-          player.attachMediaElement(video);
-          player.load();
-          attemptPlay();
-        } catch (e) {
-          video.src = url;
-          attemptPlay();
-        }
+        
+        // Fallback to native video
+        video.src = url;
+        attemptPlay();
         return;
       }
 
-      // باقي أنواع الروابط
+      // باقي أنواع الروابط (Iframe, YouTube, etc.)
       const getYouTubeId = (url: string) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regExp);
@@ -417,7 +428,12 @@ export default function RealPlayer() {
   };
 
   const isCurrentFB = servers[activeIndex] && servers[activeIndex].url.includes("facebook.com");
-  const isCurrentStream = servers[activeIndex] && (servers[activeIndex].url.includes(".ts") || servers[activeIndex].url.includes("type=http") || servers[activeIndex].type === "ts");
+  const isCurrentStream = servers[activeIndex] && (
+    servers[activeIndex].url.includes(".ts") || 
+    servers[activeIndex].url.includes("type=http") || 
+    servers[activeIndex].url.includes("extension=ts") ||
+    servers[activeIndex].type === "ts"
+  );
 
   if (fetching) {
     return (
@@ -545,7 +561,7 @@ export default function RealPlayer() {
         </div>
       )}
 
-      {/* قسم الكلمات المفتاحية (Tags) - صف واحد مع تمرير أفقي */}
+      {/* قسم الكلمات المفتاحية (Tags) */}
       <div className="mt-8 w-full max-w-[1200px] overflow-x-auto no-scrollbar" dir="rtl">
         <div className="flex flex-nowrap justify-center gap-2 min-w-max px-4">
           {tags.map((tag, index) => (
