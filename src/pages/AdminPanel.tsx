@@ -39,7 +39,6 @@ const AdminPanel = () => {
   const [accessCode, setAccessCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingCode, setIsCheckingCode] = useState(false);
-  const [isSavingScripts, setIsSavingScripts] = useState(false);
 
   const [pages, setPages] = useState<Page[]>([]);
   const [activePageId, setActivePageId] = useState<string | null>(null);
@@ -55,6 +54,7 @@ const AdminPanel = () => {
   const [externalScripts, setExternalScripts] = useState("");
   const [bulkInput, setBulkInput] = useState("");
 
+  // ملفات الموقع (Service Workers)
   const [siteFiles, setSiteFiles] = useState<SiteFile[]>([]);
   const [newFileName, setNewFileName] = useState("sw.js");
   const [newFileContent, setNewFileContent] = useState("");
@@ -126,6 +126,7 @@ const AdminPanel = () => {
       
       if (settingsData) setExternalScripts(settingsData.value);
 
+      // جلب الملفات
       const { data: filesData } = await supabase.from('site_files').select('*');
       if (filesData) setSiteFiles(filesData);
 
@@ -244,6 +245,7 @@ const AdminPanel = () => {
     updatedServers[index].sort_order = updatedServers[newIndex].sort_order;
     updatedServers[newIndex].sort_order = temp;
 
+    // Update in DB
     const { error: err1 } = await supabase.from('servers').update({ sort_order: updatedServers[index].sort_order }).eq('id', updatedServers[index].id);
     const { error: err2 } = await supabase.from('servers').update({ sort_order: updatedServers[newIndex].sort_order }).eq('id', updatedServers[newIndex].id);
 
@@ -286,6 +288,7 @@ const AdminPanel = () => {
 
         setIsLoading(true);
         
+        // Import Pages
         for (const page of backup.pages) {
           await supabase.from('pages').upsert({ 
             name: page.name, 
@@ -293,8 +296,10 @@ const AdminPanel = () => {
           }, { onConflict: 'slug' });
         }
 
+        // Re-fetch pages to get correct IDs
         const { data: currentPages } = await supabase.from('pages').select('*');
         
+        // Import Servers
         for (const server of backup.servers) {
           const originalPage = backup.pages.find((p: any) => p.id === server.page_id);
           const currentPage = currentPages?.find(p => p.slug === originalPage?.slug);
@@ -364,28 +369,12 @@ const AdminPanel = () => {
   };
 
   const saveExternalScripts = async () => {
-    setIsSavingScripts(true);
-    try {
-      const { error } = await supabase
-        .from('site_settings')
-        .upsert({ 
-          key: 'external_scripts', 
-          value: externalScripts 
-        }, { 
-          onConflict: 'key' 
-        });
-      
-      if (error) {
-        console.error("Supabase error:", error);
-        showError(`فشل الحفظ: ${error.message || 'خطأ في قاعدة البيانات'}`);
-      } else {
-        showSuccess("تم حفظ الأكواد بنجاح في السحابة");
-      }
-    } catch (err: any) {
-      showError(`خطأ غير متوقع: ${err.message}`);
-    } finally {
-      setIsSavingScripts(false);
-    }
+    const { error } = await supabase
+      .from('site_settings')
+      .upsert({ key: 'external_scripts', value: externalScripts }, { onConflict: 'key' });
+    
+    if (error) showError("فشل حفظ الأكواد");
+    else showSuccess("تم حفظ الأكواد");
   };
 
   const handleSaveFile = async () => {
@@ -469,6 +458,7 @@ const AdminPanel = () => {
     <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans flex flex-col" dir="rtl">
       <div className="max-w-7xl mx-auto w-full space-y-8 flex-grow">
         
+        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية</h1>
           <div className="flex gap-2 flex-wrap justify-center">
@@ -492,8 +482,10 @@ const AdminPanel = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
+          {/* Right Column: Pages & Bulk */}
           <div className="lg:col-span-4 space-y-8">
             
+            {/* Pages Section */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader>
                 <CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
@@ -525,6 +517,7 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
+            {/* Bulk Add Section */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader>
                 <CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
@@ -544,8 +537,10 @@ const AdminPanel = () => {
             </Card>
           </div>
 
+          {/* Left Column: Channels & SEO */}
           <div className="lg:col-span-8 space-y-8">
             
+            {/* Edit Channels */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-center">تعديل قنوات: <span className="text-indigo-400">{activePageName}</span></CardTitle>
@@ -598,6 +593,7 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
+            {/* Virtual Files Section (Service Workers) */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
@@ -651,6 +647,7 @@ const AdminPanel = () => {
               </CardContent>
             </Card>
 
+            {/* SEO Section */}
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
@@ -665,12 +662,8 @@ const AdminPanel = () => {
                   className="bg-slate-900/80 border-slate-700 min-h-[200px] font-mono text-xs text-right"
                   dir="ltr"
                 />
-                <Button 
-                  onClick={saveExternalScripts} 
-                  disabled={isSavingScripts}
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg flex items-center justify-center gap-2"
-                >
-                  {isSavingScripts ? <Loader2 className="animate-spin" size={20} /> : "حفظ الأكواد في السحابة"}
+                <Button onClick={saveExternalScripts} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg">
+                  حفظ الأكواد في السحابة
                 </Button>
               </CardContent>
             </Card>
@@ -678,6 +671,7 @@ const AdminPanel = () => {
 
         </div>
 
+        {/* Close Button */}
         <div className="flex justify-center pt-8 pb-12">
           <Button 
             onClick={() => navigate('/real.html')} 
