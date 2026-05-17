@@ -64,14 +64,6 @@ const Index = () => {
         <meta property="og:image" content="/favicon.svg" />
         <meta property="og:type" content="website" />
         
-        {/* كود التحقق الأساسي */}
-        <script src="https://alwingulla.com/88/p.js?management=892345" type="text/javascript"></script>
-        
-        {/* كود Onclick / Popunder */}
-        <script type="text/javascript">
-          {`(function(s){s.dataset.zone='10984911',s.src='https://al5sm.com/tag.min.js'})([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`}
-        </script>
-        
         <script type="application/ld+json">
           {JSON.stringify(schemaData)}
         </script>
@@ -187,7 +179,7 @@ const Index = () => {
             <div className="lg:col-span-2 space-y-12 text-right">
               <div className="space-y-6">
                 <h2 className="text-4xl md:text-5xl font-black text-white leading-tight">
-                  لماذا يعتبر <span className="text-[#00e676]">كورة لايف</span> الخيار الأول للمشجعين?
+                  لماذا يعتبر <span className="text-[#00e676]">كورة لايف</span> الخيار الأول للمشجعين؟
                 </h2>
                 <div className="prose prose-invert max-w-none text-slate-400 text-lg leading-loose">
                   <p>
