@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, Wifi, WifiOff, Database } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -40,7 +40,6 @@ const AdminPanel = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingCode, setIsCheckingCode] = useState(false);
   const [isSavingScripts, setIsSavingScripts] = useState(false);
-  const [dbStatus, setDbStatus] = useState<'checking' | 'connected' | 'error'>('checking');
 
   const [pages, setPages] = useState<Page[]>([]);
   const [activePageId, setActivePageId] = useState<string | null>(null);
@@ -68,17 +67,6 @@ const AdminPanel = () => {
     }
   }, []);
 
-  const checkConnection = async () => {
-    try {
-      const { error } = await supabase.from('site_settings').select('key').limit(1);
-      if (error) throw error;
-      setDbStatus('connected');
-    } catch (err) {
-      console.error("DB Check error:", err);
-      setDbStatus('error');
-    }
-  };
-
   const handleUnlock = async () => {
     setIsCheckingCode(true);
     try {
@@ -105,7 +93,7 @@ const AdminPanel = () => {
         fetchInitialData();
         showSuccess("تم الدخول (كود احتياطي)");
       } else {
-        showError("خطأ في الاتصال بقاعدة البيانات. تأكد من تهيئة الجداول.");
+        showError("خطأ في التحقق من الكود");
       }
     } finally {
       setIsCheckingCode(false);
@@ -114,19 +102,13 @@ const AdminPanel = () => {
 
   const fetchInitialData = async () => {
     setIsLoading(true);
-    checkConnection();
     try {
       const { data: pagesData, error: pagesError } = await supabase
         .from('pages')
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (pagesError) {
-        if (pagesError.message.includes("relation") || pagesError.message.includes("does not exist")) {
-          showError("الجداول غير موجودة في قاعدة البيانات الجديدة. يرجى تهيئتها.");
-        }
-        throw pagesError;
-      }
+      if (pagesError) throw pagesError;
       
       if (pagesData && pagesData.length > 0) {
         setPages(pagesData);
@@ -474,18 +456,21 @@ const AdminPanel = () => {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#020617] flex flex-col items-center justify-center text-white">
+        <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
+        <p>جارٍ التحميل...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans flex flex-col" dir="rtl">
       <div className="max-w-7xl mx-auto w-full space-y-8 flex-grow">
         
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية</h1>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-bold border ${dbStatus === 'connected' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border-red-500/20 text-red-400'}`}>
-              {dbStatus === 'connected' ? <Wifi size={12} /> : <WifiOff size={12} />}
-              {dbStatus === 'connected' ? 'متصل بالسحابة' : 'خطأ في الاتصال'}
-            </div>
-          </div>
+          <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية</h1>
           <div className="flex gap-2 flex-wrap justify-center">
             <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10">
               <Download size={16} /> تصدير
@@ -505,138 +490,211 @@ const AdminPanel = () => {
           </div>
         </div>
 
-        {dbStatus === 'error' && (
-          <div className="bg-amber-500/10 border border-amber-500/30 p-6 rounded-2xl flex flex-col items-center gap-4 text-center">
-            <Database className="text-amber-500" size={40} />
-            <div className="space-y-1">
-              <h3 className="font-black text-amber-500">تنبيه: قاعدة البيانات غير مهيأة</h3>
-              <p className="text-slate-400 text-xs leading-relaxed">
-                يبدو أنك قمت بربط مشروع Supabase جديد. يجب عليك إنشاء الجداول اللازمة أولاً.
-                <br />
-                يرجى الضغط على الزر أدناه لمعرفة الأكواد التي يجب تشغيلها في <strong>SQL Editor</strong> الخاص بـ Supabase.
-              </p>
-            </div>
-            <Button variant="outline" className="border-amber-500/30 text-amber-500 hover:bg-amber-500/10 text-xs h-9" onClick={() => window.open('https://dyad.sh/docs/integrations/supabase', '_blank')}>
-              دليل التهيئة
-            </Button>
-          </div>
-        )}
-
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="animate-spin text-indigo-500 mb-4" size={48} />
-            <p>جارٍ تحميل البيانات...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-            {/* المحتوى السابق للوحة التحكم */}
-            <div className="lg:col-span-4 space-y-8">
-              <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-3">
-                    <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
-                    <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
-                    <Button onClick={addPage} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-10 gap-2">
-                      <Plus size={16} /> إنشاء صفحة
-                    </Button>
-                  </div>
-                  <div className="space-y-2 pt-4">
-                    {pages.map(p => (
-                      <div key={p.id} className="flex flex-col gap-1">
-                        <div 
-                          onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} 
-                          className={`w-full flex items-center justify-between px-4 h-12 font-bold rounded-md cursor-pointer transition-colors ${activePageId === p.id ? 'bg-indigo-600 text-white' : 'bg-slate-900/50 border border-slate-800 text-slate-300 hover:bg-slate-800'}`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <div onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} className="p-1 hover:text-white" role="button"><ExternalLink size={14} /></div>
-                            {p.slug !== 'default' && <div onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} className="p-1 hover:text-red-400" role="button"><Trash2 size={14} /></div>}
-                          </div>
-                          <span>{p.name}</span>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          <div className="lg:col-span-4 space-y-8">
+            
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                  <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                  <Button onClick={addPage} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-10 gap-2">
+                    <Plus size={16} /> إنشاء صفحة
+                  </Button>
+                </div>
+                <div className="space-y-2 pt-4">
+                  {pages.map(p => (
+                    <div key={p.id} className="flex flex-col gap-1">
+                      <div 
+                        onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }} 
+                        className={`w-full flex items-center justify-between px-4 h-12 font-bold rounded-md cursor-pointer transition-colors ${activePageId === p.id ? 'bg-indigo-600 text-white' : 'bg-slate-900/50 border border-slate-800 text-slate-300 hover:bg-slate-800'}`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} className="p-1 hover:text-white" role="button"><ExternalLink size={14} /></div>
+                          {p.slug !== 'default' && <div onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} className="p-1 hover:text-red-400" role="button"><Trash2 size={14} /></div>}
                         </div>
+                        <span>{p.name}</span>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Textarea 
-                    placeholder={"الاسم = الرابط..."} 
-                    value={bulkInput}
-                    onChange={(e) => setBulkInput(e.target.value)}
-                    className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right"
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle>
+                <p className="text-[10px] text-slate-500">أضف قنوات متعددة: الاسم = الرابط (كل قناة في سطر)</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea 
+                  placeholder={"Quran Live 24h/24h (twitch.tv) = https://www.twitch.tv/quran_live24\nAljazeera News Arabic (Youtube LIVE) = https://www.youtube.com/watch?v=N8xxOD0nT1Y\n..."} 
+                  value={bulkInput}
+                  onChange={(e) => setBulkInput(e.target.value)}
+                  className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right"
+                />
+                <Button onClick={handleBulkAdd} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-12">
+                  إضافة الكل
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-8 space-y-8">
+            
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-center">تعديل قنوات: <span className="text-indigo-400">{activePageName}</span></CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex flex-col md:flex-row gap-3">
+                  <Input 
+                    placeholder="اسم القناة" 
+                    value={newName} 
+                    onChange={e => setNewName(e.target.value)} 
+                    className="bg-slate-900/80 border-slate-700 h-12 text-right" 
                   />
-                  <Button onClick={handleBulkAdd} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-12">
-                    إضافة الكل
+                  <Input 
+                    placeholder="رابط Iframe او m3u8 او ts او يوتيوب او فيس بوك" 
+                    value={newUrl} 
+                    onChange={e => setNewUrl(e.target.value)} 
+                    className="bg-slate-900/80 border-slate-700 h-12 text-right" 
+                  />
+                  <Button onClick={handleSubmit} className="bg-indigo-600 hover:bg-indigo-700 font-bold h-12 px-8">
+                    {editingId ? 'تحديث' : 'إضافة'}
                   </Button>
-                </CardContent>
-              </Card>
-            </div>
-
-            <div className="lg:col-span-8 space-y-8">
-              <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold text-center">تعديل قنوات: <span className="text-indigo-400">{activePageName}</span></CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex flex-col md:flex-row gap-3">
-                    <Input placeholder="اسم القناة" value={newName} onChange={e => setNewName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-12 text-right" />
-                    <Input placeholder="الرابط..." value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900/80 border-slate-700 h-12 text-right" />
-                    <Button onClick={handleSubmit} className="bg-indigo-600 hover:bg-indigo-700 font-bold h-12 px-8">
-                      {editingId ? 'تحديث' : 'إضافة'}
-                    </Button>
-                  </div>
-                  
-                  <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                    {servers.map((s, i) => (
-                      <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl group hover:border-indigo-500/30 transition-all">
-                        <div className="flex-grow text-right">
-                          <div className="font-black text-sm">{s.name}</div>
-                          <div className="text-[10px] text-slate-500 truncate max-w-[300px] block">{s.url}</div>
-                        </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <div className="flex flex-col gap-1 mr-2">
-                            <button onClick={() => moveChannel(i, 'up')} className="p-1 text-slate-500 hover:text-white" disabled={i === 0}><ChevronUp size={14} /></button>
-                            <button onClick={() => moveChannel(i, 'down')} className="p-1 text-slate-500 hover:text-white" disabled={i === servers.length - 1}><ChevronDown size={14} /></button>
-                          </div>
-                          <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
-                          <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
-                          <button onClick={() => copyToClipboard(s.url)} className="p-2 text-slate-500 hover:text-emerald-400"><Copy size={16} /></button>
-                        </div>
+                </div>
+                
+                <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                  {servers.map((s, i) => (
+                    <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl group hover:border-indigo-500/30 transition-all">
+                      <div className="flex-grow text-right">
+                        <div className="font-black text-sm">{s.name}</div>
+                        <a 
+                          href={s.url.includes('<iframe') ? '#' : s.url} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-[10px] text-slate-500 truncate max-w-[300px] block hover:text-indigo-400 transition-colors"
+                        >
+                          {s.url}
+                        </a>
                       </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex flex-col gap-1 mr-2">
+                          <button onClick={() => moveChannel(i, 'up')} className="p-1 text-slate-500 hover:text-white disabled:opacity-20" disabled={i === 0}><ChevronUp size={14} /></button>
+                          <button onClick={() => moveChannel(i, 'down')} className="p-1 text-slate-500 hover:text-white disabled:opacity-20" disabled={i === servers.length - 1}><ChevronDown size={14} /></button>
+                        </div>
+                        <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
+                        <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
+                        <button onClick={() => copyToClipboard(s.url)} className="p-2 text-slate-500 hover:text-emerald-400"><Copy size={16} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-              <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
-                <CardHeader>
-                  <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2"><Code size={20} /> إعدادات الأكواد (Ads/SEO)</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <Textarea placeholder="...ألصق الكود هنا" value={externalScripts} onChange={(e) => setExternalScripts(e.target.value)} className="bg-slate-900/80 border-slate-700 min-h-[200px] font-mono text-xs text-right" dir="ltr" />
-                  <Button onClick={saveExternalScripts} disabled={isSavingScripts} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg">
-                    {isSavingScripts ? <Loader2 className="animate-spin" size={20} /> : "حفظ الأكواد في السحابة"}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
+                  <FileCode size={20} /> إدارة ملفات الـ Service Worker
+                </CardTitle>
+                <p className="text-center text-xs text-slate-400">ارفع ملفات مثل sw.js الخاصة بـ Monetag لتظهر في المسار الرئيسي للموقع</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Input 
+                    placeholder="اسم الملف (مثلاً sw.js)" 
+                    value={newFileName} 
+                    onChange={e => setNewFileName(e.target.value)} 
+                    className="bg-slate-900/80 border-slate-700 h-10 text-right" 
+                  />
+                </div>
+                <Textarea 
+                  placeholder="ألصق محتوى الملف هنا..." 
+                  value={newFileContent}
+                  onChange={(e) => setNewFileContent(e.target.value)}
+                  className="bg-slate-900/80 border-slate-700 min-h-[150px] font-mono text-xs text-right"
+                  dir="ltr"
+                />
+                <Button onClick={handleSaveFile} className="w-full bg-indigo-600 hover:bg-indigo-700 font-black h-12">
+                  حفظ الملف في السحابة
+                </Button>
+
+                <div className="space-y-2 pt-4">
+                  {siteFiles.map(file => (
+                    <div key={file.id} className="flex items-center justify-between p-3 bg-slate-900/40 border border-slate-800 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <button onClick={() => deleteFile(file.id)} className="text-red-500 hover:text-red-400 p-1"><Trash2 size={16} /></button>
+                        <button onClick={() => { setNewFileName(file.filename); setNewFileContent(file.content); }} className="text-indigo-400 hover:text-indigo-300 p-1"><Edit2 size={16} /></button>
+                        <a 
+                          href={`/${file.filename}`} 
+                          target="_blank" 
+                          rel="noreferrer" 
+                          className="text-emerald-400 hover:text-emerald-300 p-1"
+                          title="معاينة الرابط"
+                        >
+                          <ExternalLink size={16} />
+                        </a>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-slate-400">/{file.filename}</span>
+                        <FileCode size={16} className="text-indigo-500" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader>
+                <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2">
+                  <Code size={20} /> إعدادات الأكواد (Ads/SEO)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea 
+                  placeholder="...ألصق الكود هنا" 
+                  value={externalScripts}
+                  onChange={(e) => setExternalScripts(e.target.value)}
+                  className="bg-slate-900/80 border-slate-700 min-h-[200px] font-mono text-xs text-right"
+                  dir="ltr"
+                />
+                <Button 
+                  onClick={saveExternalScripts} 
+                  disabled={isSavingScripts}
+                  className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg flex items-center justify-center gap-2"
+                >
+                  {isSavingScripts ? <Loader2 className="animate-spin" size={20} /> : "حفظ الأكواد في السحابة"}
+                </Button>
+              </CardContent>
+            </Card>
           </div>
-        )}
+
+        </div>
 
         <div className="flex justify-center pt-8 pb-12">
-          <Button onClick={() => navigate('/real.html')} className="bg-red-600 hover:bg-red-700 text-white font-black px-12 py-8 rounded-2xl text-xl shadow-2xl flex items-center gap-3">
-            <XCircle size={28} /> إغلاق والعودة للمشاهدة
+          <Button 
+            onClick={() => navigate('/real.html')} 
+            className="bg-red-600 hover:bg-red-700 text-white font-black px-12 py-8 rounded-2xl text-xl shadow-2xl shadow-red-500/20 flex items-center gap-3"
+          >
+            <XCircle size={28} />
+            إغلاق والعودة للمشاهدة
           </Button>
         </div>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #334155; }
+      `}} />
     </div>
   );
 };
