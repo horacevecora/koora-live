@@ -15,22 +15,29 @@ const ExternalScripts = () => {
 
         if (error || !data?.value) return;
 
-        // استخدام Range لضمان معالجة السكربتات وتنفيذها بشكل صحيح تماماً كما في HTML الأصلي
+        // تنظيف الأكواد لمنع التكرار إذا كان الكود موجوداً بالفعل في index.html
+        const scriptsInHead = Array.from(document.head.querySelectorAll('script')).map(s => s.src || s.textContent);
+        
         const range = document.createRange();
         range.selectNode(document.head);
         const fragment = range.createContextualFragment(data.value);
         
-        // معالجة السكربتات بشكل خاص لضمان التنفيذ (لأن appendChild العادي للـ fragment قد لا ينفذ السكربتات في بعض المتصفحات)
         const scripts = fragment.querySelectorAll('script');
         scripts.forEach(oldScript => {
+          const scriptContent = oldScript.src || oldScript.textContent;
+          // تجنب تكرار السكربت إذا كان محقوناً يدوياً
+          if (scriptsInHead.includes(scriptContent)) {
+            oldScript.remove();
+            return;
+          }
+
           const newScript = document.createElement('script');
           Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
           newScript.textContent = oldScript.textContent;
           document.head.appendChild(newScript);
-          oldScript.remove(); // إزالة القديم من الـ fragment
+          oldScript.remove();
         });
 
-        // إضافة ما تبقى (Meta, Link, Style)
         document.head.appendChild(fragment);
 
       } catch (err) {
