@@ -10,7 +10,6 @@ import PlayerPage from "./pages/PlayerPage";
 import RealPlayer from "./pages/RealPlayer";
 import AdminPanel from "./pages/AdminPanel";
 import Matches from "./pages/Matches";
-import ExternalScripts from "./components/ExternalScripts";
 
 const queryClient = new QueryClient();
 
@@ -18,7 +17,6 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <HelmetProvider>
       <TooltipProvider>
-        <ExternalScripts />
         <Toaster />
         <Sonner />
         <BrowserRouter>
