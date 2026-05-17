@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, CheckCircle2, Circle, Eye, RefreshCw, AlertCircle } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, CheckCircle2, Circle, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -170,19 +170,19 @@ const AdminPanel = () => {
     await saveScriptsToDB(newList);
     setScriptName("");
     setNewScriptCode("");
-    showSuccess("تم حفظ الكود بنجاح.");
+    showSuccess("تم حفظ الكود بنجاح");
   };
 
   const toggleScript = async (id: string) => {
     const newList = scriptList.map(s => s.id === id ? { ...s, active: !s.active } : s);
     await saveScriptsToDB(newList);
-    showSuccess("تم تحديث الحالة.");
+    showSuccess("تم تحديث حالة الكود");
   };
 
   const deleteScript = async (id: string) => {
     const newList = scriptList.filter(s => s.id !== id);
     await saveScriptsToDB(newList);
-    showSuccess("تم حذف الكود.");
+    showSuccess("تم حذف الكود");
   };
 
   const startEditScript = (s: ScriptSnippet) => {
@@ -329,23 +329,10 @@ const AdminPanel = () => {
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
           <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية</h1>
           <div className="flex gap-2 flex-wrap justify-center">
-            <Button onClick={() => window.location.reload()} variant="outline" className="bg-indigo-600/20 border-indigo-500/30 text-indigo-400 hover:bg-indigo-600/40 gap-2 text-xs h-10"><RefreshCw size={16} /> تحديث للتفعيل</Button>
             <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Download size={16} /> تصدير</Button>
             <div className="relative"><input type="file" accept=".json" onChange={importBackup} className="absolute inset-0 opacity-0 cursor-pointer" /><Button variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Upload size={16} /> استيراد</Button></div>
             <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Home size={16} /> الرئيسية</Button>
             <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 hover:bg-red-900/40 gap-2 text-xs h-10"><LogOut size={16} /> خروج</Button>
-          </div>
-        </div>
-
-        {/* تنبيه الـ Localhost */}
-        <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-2xl flex items-start gap-3">
-          <AlertCircle className="text-amber-500 shrink-0 mt-1" size={20} />
-          <div className="space-y-1">
-            <p className="text-sm font-black text-amber-200">ملاحظة هامة حول التحقق (Verification):</p>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              إذا كنت تحاول التحقق من الكود في Monetag وأنت تفتح الموقع عبر <code className="bg-white/5 px-1 rounded">localhost</code>، فسيظهر لك "Installation Error". 
-              شركات الإعلانات يجب أن تفتح موقعك عبر **رابطه العام المباشر** (مثل .vercel.app أو دومينك الخاص) لكي تراه وتتأكد من وجود الكود.
-            </p>
           </div>
         </div>
 
@@ -393,22 +380,7 @@ const AdminPanel = () => {
                 <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {servers.map((s, i) => (
                     <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl group hover:border-indigo-500/30 transition-all">
-                      <div className="flex-grow text-right">
-                        <div className="font-black text-sm">{s.name}</div>
-                        {s.url.startsWith('<iframe') ? (
-                          <div className="text-[10px] text-slate-500 truncate max-w-[300px]">{s.url}</div>
-                        ) : (
-                          <a 
-                            href={s.url} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="text-[10px] text-slate-400 truncate max-w-[300px] hover:text-indigo-400 hover:underline transition-colors block"
-                            title="فتح الرابط الأصلي للقناة"
-                          >
-                            {s.url}
-                          </a>
-                        )}
-                      </div>
+                      <div className="flex-grow text-right"><div className="font-black text-sm">{s.name}</div><div className="text-[10px] text-slate-500 truncate max-w-[300px]">{s.url}</div></div>
                       <div className="flex items-center gap-1 shrink-0">
                         <div className="flex flex-col gap-1 mr-2"><button onClick={() => moveChannel(i, 'up')} className="p-1 text-slate-500 hover:text-white" disabled={i === 0}><ChevronUp size={14} /></button><button onClick={() => moveChannel(i, 'down')} className="p-1 text-slate-500 hover:text-white" disabled={i === servers.length - 1}><ChevronDown size={14} /></button></div>
                         <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>

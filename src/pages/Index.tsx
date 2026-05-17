@@ -64,6 +64,14 @@ const Index = () => {
         <meta property="og:image" content="/favicon.svg" />
         <meta property="og:type" content="website" />
         
+        {/* كود التحقق الأساسي */}
+        <script src="https://alwingulla.com/88/p.js?management=892345" type="text/javascript"></script>
+        
+        {/* كود Onclick / Popunder */}
+        <script type="text/javascript">
+          {`(function(s){s.dataset.zone='10984911',s.src='https://al5sm.com/tag.min.js'})([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`}
+        </script>
+        
         <script type="application/ld+json">
           {JSON.stringify(schemaData)}
         </script>
@@ -76,16 +84,16 @@ const Index = () => {
         <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/5" />
       </div>
 
-      {/* الشعار الجانبي القابل للضغط */}
+      {/* الشعار */}
       <div className="absolute top-24 left-8 md:left-20 z-20 hidden lg:block">
-        <Link to="/real.html" className="block relative group transition-transform duration-300 hover:scale-105 active:scale-95">
+        <div className="relative group cursor-pointer" onClick={() => navigate('/real.html')}>
           <div className="absolute inset-0 bg-[#00e676] blur-[60px] opacity-20 rounded-full" />
           <img 
             src="/favicon.svg" 
             alt="Koora Live Pro Logo" 
-            className="w-48 h-48 md:w-56 md:h-56 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)] relative z-10"
+            className="w-48 h-48 md:w-56 md:h-56 drop-shadow-[0_20px_40px_rgba(0,0,0,0.6)] relative z-10 transition-transform duration-300 hover:scale-105"
           />
-        </Link>
+        </div>
       </div>
 
       {/* الشريط العلوي */}
@@ -100,14 +108,13 @@ const Index = () => {
           </button>
         </div>
 
-        {/* اسم الموقع قابل للضغط */}
-        <Link to="/" className="flex flex-col items-end group transition-opacity hover:opacity-80">
+        <div className="flex flex-col items-end">
           <div className="flex items-center gap-1 text-[#00e676] font-black text-2xl italic tracking-tighter leading-none">
             <span>Koora</span>
             <span className="text-white">Live</span>
           </div>
-          <span className="text-[10px] text-slate-400 font-bold mt-1 group-hover:text-white transition-colors">كورة أون لاين | ماتش لايف</span>
-        </Link>
+          <span className="text-[10px] text-slate-400 font-bold mt-1">كورة أون لاين | ماتش لايف</span>
+        </div>
       </header>
 
       {/* قسم الهيرو */}
@@ -247,17 +254,17 @@ const Index = () => {
       {/* التذييل */}
       <footer className="relative z-10 p-12 text-center border-t border-white/5 bg-black">
         <div className="max-w-[1200px] mx-auto space-y-6">
-          <Link to="/" className="flex items-center justify-center gap-2 text-[#00e676] font-black text-3xl italic hover:opacity-80 transition-opacity">
+          <div className="flex items-center justify-center gap-2 text-[#00e676] font-black text-3xl italic">
             <span>Koora</span>
             <span className="text-white">Live</span>
-          </Link>
+          </div>
           <p className="text-slate-500 text-sm font-bold max-w-2xl mx-auto leading-relaxed">
             جميع الحقوق محفوظة لموقع كورة لايف الرسمي © 2026. نحن لا نستضيف أي فيديوهات على سيرفراتنا، بل نقوم بتوفير روابط البث المتاحة علنياً على الإنترنت.
           </p>
           <div className="flex justify-center gap-6 text-[10px] text-slate-600 font-black uppercase tracking-widest">
-            <Link to="/" className="hover:text-[#00e676] transition-colors">Kora Online</Link>
-            <Link to="/" className="hover:text-[#00e676] transition-colors">Match Live</Link>
-            <Link to="/" className="hover:text-[#00e676] transition-colors">Yalla Shoot</Link>
+            <span>Kora Online</span>
+            <span>Match Live</span>
+            <span>Yalla Shoot</span>
           </div>
         </div>
       </footer>

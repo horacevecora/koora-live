@@ -15,33 +15,37 @@ const ExternalScripts = () => {
 
         if (error || !data?.value) return;
 
-        // تنظيف الأكواد لمنع التكرار إذا كان الكود موجوداً بالفعل في index.html
-        const scriptsInHead = Array.from(document.head.querySelectorAll('script')).map(s => s.src || s.textContent);
+        // إنشاء حاوية مخفية للأكواد الخارجية لتنظيمها
+        let container = document.getElementById('dyad-external-scripts');
+        if (container) container.remove();
         
-        const range = document.createRange();
-        range.selectNode(document.head);
-        const fragment = range.createContextualFragment(data.value);
-        
-        const scripts = fragment.querySelectorAll('script');
-        scripts.forEach(oldScript => {
-          const scriptContent = oldScript.src || oldScript.textContent;
-          // تجنب تكرار السكربت إذا كان محقوناً يدوياً
-          if (scriptsInHead.includes(scriptContent)) {
-            oldScript.remove();
-            return;
-          }
+        container = document.createElement('div');
+        container.id = 'dyad-external-scripts';
+        container.style.display = 'none';
+        document.head.appendChild(container);
 
+        const range = document.createRange();
+        const documentFragment = range.createContextualFragment(data.value);
+        
+        // حقن السكريبتات بطريقة تضمن التنفيذ الفوري
+        const scripts = documentFragment.querySelectorAll('script');
+        scripts.forEach(oldScript => {
           const newScript = document.createElement('script');
-          Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-          newScript.textContent = oldScript.textContent;
-          document.head.appendChild(newScript);
-          oldScript.remove();
+          Array.from(oldScript.attributes).forEach(attr => {
+            newScript.setAttribute(attr.name, attr.value);
+          });
+          if (oldScript.innerHTML) {
+            newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+          }
+          container?.appendChild(newScript);
         });
 
-        document.head.appendChild(fragment);
+        // حقن الميتا والستايلات
+        const otherElements = documentFragment.querySelectorAll('link, meta, style');
+        otherElements.forEach(el => container?.appendChild(el));
 
       } catch (err) {
-        console.error("[ExternalScripts] Error:", err);
+        console.error("Error injecting external scripts:", err);
       }
     };
 
