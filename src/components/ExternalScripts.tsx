@@ -9,6 +9,7 @@ const ExternalScripts = () => {
 
     const fetchAndInject = async () => {
       try {
+        // جلب الأكواد من site_settings
         const { data } = await supabase
           .from('site_settings')
           .select('value')
@@ -17,14 +18,16 @@ const ExternalScripts = () => {
 
         if (!mounted || !data?.value) return;
 
-        // الطريقة 1: إضافة script tag
+        // إنشاء عنصر script
         const script = document.createElement('script');
         script.textContent = data.value;
-        script.async = false; // تعطيل async لضمان التنفيذ بالترتيب
+        script.async = false;
+        
+        // إضافة في head
         document.head.appendChild(script);
 
       } catch (err) {
-        console.error("Error injecting scripts:", err);
+        console.error("Error loading scripts:", err);
       }
     };
 
