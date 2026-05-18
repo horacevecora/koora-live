@@ -18,10 +18,6 @@
       "destination": "https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/site-files?file=ads.txt"
     },
     {
-      "source": "/ads.js",
-      "destination": "https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/get-ads"
-    },
-    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
