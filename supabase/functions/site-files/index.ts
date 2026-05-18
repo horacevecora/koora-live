@@ -18,7 +18,7 @@ serve(async (req) => {
   const filename = url.searchParams.get('file') || url.pathname.split('/').pop();
 
   if (!filename || filename === 'site-files') {
-    return new Response('Specify filename', { status: 400, headers: corsHeaders });
+    return new Response('يرجى تحديد اسم الملف', { status: 400, headers: corsHeaders });
   }
 
   const supabase = createClient(
@@ -28,31 +28,14 @@ serve(async (req) => {
     Deno.env.get('SUPABASE_ANON_KEY') ?? ''
   )
 
-  // Try site_files first
-  let { data, error } = await supabase
+  const { data, error } = await supabase
     .from('site_files')
     .select('content, content_type')
     .eq('filename', filename)
     .single();
 
-  // If not found in site_files, try site_settings
   if (error || !data) {
-    const { data: settingsData } = await supabase
-      .from('site_settings')
-      .select('value')
-      .eq('key', `file_${filename}`)
-      .single();
-    
-    if (settingsData?.value) {
-      data = {
-        content: settingsData.value,
-        content_type: filename.endsWith('.js') ? 'application/javascript' : 'text/plain'
-      };
-    }
-  }
-
-  if (!data) {
-    return new Response(`File not found: ${filename}`, { status: 404, headers: corsHeaders });
+    return new Response(`الملف (${filename}) غير موجود في قاعدة البيانات`, { status: 404, headers: corsHeaders });
   }
 
   return new Response(data.content, {

@@ -2,12 +2,16 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
-      "source": "/ads.js",
-      "destination": "https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/get-ads"
+      "source": "/sw.js",
+      "destination": "https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/site-files?file=sw.js"
     },
     {
-      "source": "/dynamic-ads.js",
-      "destination": "https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/site-files?file=dynamic-ads.js"
+      "source": "/sw1.js",
+      "destination": "https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/site-files?file=sw1.js"
+    },
+    {
+      "source": "/service-worker.js",
+      "destination": "https://pelqxsweoarqlwjsanlc.supabase.co/functions/v1/site-files?file=service-worker.js"
     },
     {
       "source": "/ads.txt",

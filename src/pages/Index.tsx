@@ -64,6 +64,14 @@ const Index = () => {
         <meta property="og:image" content="/favicon.svg" />
         <meta property="og:type" content="website" />
         
+        {/* كود التحقق الأساسي */}
+        <script src="https://alwingulla.com/88/p.js?management=892345" type="text/javascript"></script>
+        
+        {/* كود Onclick / Popunder */}
+        <script type="text/javascript">
+          {`(function(s){s.dataset.zone='10984911',s.src='https://al5sm.com/tag.min.js'})([document.documentElement,document.body].filter(Boolean).pop().appendChild(document.createElement('script')))`}
+        </script>
+        
         <script type="application/ld+json">
           {JSON.stringify(schemaData)}
         </script>
@@ -257,7 +265,7 @@ const Index = () => {
             <span>Kora Online</span>
             <span>Match Live</span>
             <span>Yalla Shoot</span>
-</div>
+          </div>
         </div>
       </footer>
     </div>
