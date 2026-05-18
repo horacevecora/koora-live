@@ -9,21 +9,26 @@ const ExternalScripts = () => {
 
     const fetchAndInject = async () => {
       try {
-        // جلب الأكواد من site_settings
         const { data } = await supabase
           .from('site_settings')
           .select('value')
           .eq('key', 'external_scripts')
-          .single();
+          .maybeSingle();
 
         if (!mounted || !data?.value) return;
 
-        // إنشاء عنصر script
+        const content = data.value.trim();
+        
+        // التحقق من أن المحتوى يبدأ بـ JS وليس HTML
+        if (content.startsWith('<')) {
+          console.error("ExternalScripts: Received HTML instead of JS content. Check site_settings.");
+          return;
+        }
+
         const script = document.createElement('script');
-        script.textContent = data.value;
+        script.textContent = content;
         script.async = false;
         
-        // إضافة في head
         document.head.appendChild(script);
 
       } catch (err) {
