@@ -5,30 +5,32 @@ import { supabase } from "@/integrations/supabase/client";
 
 const ExternalScripts = () => {
   useEffect(() => {
+    let mounted = true;
+
     const fetchAndInject = async () => {
       try {
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('site_settings')
           .select('value')
           .eq('key', 'external_scripts')
           .single();
 
-        if (error || !data?.value) return;
+        if (!mounted || !data?.value) return;
 
-        // إنشاء عنصر script جديد
+        // الطريقة 1: إضافة script tag
         const script = document.createElement('script');
         script.textContent = data.value;
-        script.async = true;
-        
-        // إضافة السكريبت في head
+        script.async = false; // تعطيل async لضمان التنفيذ بالترتيب
         document.head.appendChild(script);
 
       } catch (err) {
-        console.error("Error injecting external scripts:", err);
+        console.error("Error injecting scripts:", err);
       }
     };
 
     fetchAndInject();
+
+    return () => { mounted = false; };
   }, []);
 
   return null;
