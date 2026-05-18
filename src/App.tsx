@@ -10,6 +10,7 @@ import PlayerPage from "./pages/PlayerPage";
 import RealPlayer from "./pages/RealPlayer";
 import AdminPanel from "./pages/AdminPanel";
 import Matches from "./pages/Matches";
+import ExternalScripts from "./components/ExternalScripts";
 
 const queryClient = new QueryClient();
 
@@ -20,6 +21,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ExternalScripts />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/index.html" element={<Index />} />
