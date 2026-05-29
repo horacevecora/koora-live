@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, CheckCircle2, Circle, Eye } from "lucide-react";
+import { Trash2, Edit2, Plus, Home, Layout, ExternalLink, Code, Loader2, ListPlus, Copy, Lock, LogOut, ChevronUp, ChevronDown, Download, Upload, XCircle, FileCode, CheckCircle2, Circle, Eye } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { showSuccess, showError } from "@/utils/toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,6 +58,7 @@ const AdminPanel = () => {
   const [newUrl, setNewUrl] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
 
+  // إدارة الأكواد
   const [scriptName, setScriptName] = useState("");
   const [newScriptCode, setNewScriptCode] = useState("");
   const [scriptList, setScriptList] = useState<ScriptSnippet[]>([]);
@@ -65,6 +66,7 @@ const AdminPanel = () => {
 
   const [bulkInput, setBulkInput] = useState("");
 
+  // ملفات الموقع
   const [siteFiles, setSiteFiles] = useState<SiteFile[]>([]);
   const [newFileName, setNewFileName] = useState("sw.js");
   const [newFileContent, setNewFileContent] = useState("");
@@ -122,6 +124,7 @@ const AdminPanel = () => {
         fetchServers(defaultPage.id);
       }
 
+      // جلب قائمة الأكواد المنظمة
       const { data: scriptsData } = await supabase.from('site_settings').select('value').eq('key', 'managed_scripts').single();
       if (scriptsData && scriptsData.value) {
         setScriptList(JSON.parse(scriptsData.value));
@@ -143,20 +146,14 @@ const AdminPanel = () => {
   };
 
   const saveScriptsToDB = async (newList: ScriptSnippet[]) => {
-    const { error: error1 } = await supabase.from('site_settings').upsert({ key: 'managed_scripts', value: JSON.stringify(newList) }, { onConflict: 'key' });
+    await supabase.from('site_settings').upsert({ key: 'managed_scripts', value: JSON.stringify(newList) }, { onConflict: 'key' });
     const combinedScripts = newList.filter(s => s.active).map(s => s.code).join('\n\n');
-    const { error: error2 } = await supabase.from('site_settings').upsert({ key: 'external_scripts', value: combinedScripts }, { onConflict: 'key' });
-    
-    if (error1 || error2) {
-        showError("خطأ في حفظ البيانات في السحابة");
-        return false;
-    }
+    await supabase.from('site_settings').upsert({ key: 'external_scripts', value: combinedScripts }, { onConflict: 'key' });
     setScriptList(newList);
-    return true;
   };
 
   const handleAddOrUpdateScript = async () => {
-    if (!newScriptCode) { showError("يرجى إدخال الكود"); return; }
+    if (!newScriptCode) return;
     let newList = [...scriptList];
     if (editingScriptId) {
       newList = newList.map(s => s.id === editingScriptId ? { ...s, name: scriptName || "كود بدون اسم", code: newScriptCode } : s);
@@ -170,29 +167,29 @@ const AdminPanel = () => {
       };
       newList.push(newEntry);
     }
-    const success = await saveScriptsToDB(newList);
-    if (success) {
-      showSuccess("تم حفظ الكود في السحابة بنجاح");
-      setScriptName("");
-      setNewScriptCode("");
-    }
+    await saveScriptsToDB(newList);
+    setScriptName("");
+    setNewScriptCode("");
+    showSuccess("تم حفظ الكود بنجاح");
   };
 
   const toggleScript = async (id: string) => {
     const newList = scriptList.map(s => s.id === id ? { ...s, active: !s.active } : s);
     await saveScriptsToDB(newList);
+    showSuccess("تم تحديث حالة الكود");
   };
 
   const deleteScript = async (id: string) => {
     const newList = scriptList.filter(s => s.id !== id);
     await saveScriptsToDB(newList);
+    showSuccess("تم حذف الكود");
   };
 
   const startEditScript = (s: ScriptSnippet) => {
     setEditingScriptId(s.id);
     setScriptName(s.name);
     setNewScriptCode(s.code);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: document.querySelector('.ads-section')?.getBoundingClientRect().top ?? 0 + window.scrollY - 100, behavior: 'smooth' });
   };
 
   const addPage = async () => {
@@ -330,33 +327,140 @@ const AdminPanel = () => {
     <div className="min-h-screen bg-[#020617] text-white p-4 md:p-8 font-sans flex flex-col" dir="rtl">
       <div className="max-w-7xl mx-auto w-full space-y-8 flex-grow">
         <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-          <h1 className="text-3xl font-black text-white">لوحة التحكم</h1>
+          <h1 className="text-3xl font-black text-white">لوحة التحكم السحابية</h1>
           <div className="flex gap-2 flex-wrap justify-center">
             <Button onClick={exportBackup} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Download size={16} /> تصدير</Button>
+            <div className="relative"><input type="file" accept=".json" onChange={importBackup} className="absolute inset-0 opacity-0 cursor-pointer" /><Button variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Upload size={16} /> استيراد</Button></div>
+            <Button onClick={() => navigate('/')} variant="outline" className="bg-slate-900/50 border-slate-800 text-white hover:bg-white/5 gap-2 text-xs h-10"><Home size={16} /> الرئيسية</Button>
             <Button onClick={handleLogout} variant="outline" className="bg-red-900/20 border-red-900/30 text-red-400 hover:bg-red-900/40 gap-2 text-xs h-10"><LogOut size={16} /> خروج</Button>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-12">
+          <div className="lg:col-span-4 space-y-8">
             <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2"><Layout size={18} /> الصفحات</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-3">
+                  <Input placeholder="اسم الصفحة" value={newPageName} onChange={e => setNewPageName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                  <Input placeholder="المعرف (Slug)" value={newPageSlug} onChange={e => setNewPageSlug(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                  <Button onClick={addPage} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-10 gap-2"><Plus size={16} /> إنشاء صفحة</Button>
+                </div>
+                <div className="space-y-2 pt-4">
+                  {pages.map(p => (
+                    <div key={p.id} className={`w-full flex items-center justify-between px-4 h-12 font-bold rounded-md cursor-pointer transition-colors ${activePageId === p.id ? 'bg-indigo-600 text-white' : 'bg-slate-900/50 border border-slate-800 text-slate-300 hover:bg-slate-800'}`} onClick={() => { setActivePageId(p.id); setActivePageName(p.name); fetchServers(p.id); }}>
+                      <div className="flex items-center gap-2">
+                        <div onClick={(e) => { e.stopPropagation(); navigate(p.slug === 'default' ? '/real.html' : `/p/${p.slug}`); }} className="p-1 hover:text-white"><ExternalLink size={14} /></div>
+                        {p.slug !== 'default' && <div onClick={(e) => { e.stopPropagation(); deletePage(p.id, p.slug); }} className="p-1 hover:text-red-400"><Trash2 size={14} /></div>}
+                      </div>
+                      <span>{p.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader><CardTitle className="text-lg font-bold flex items-center gap-2"><ListPlus size={18} /> إضافة جماعية</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea placeholder={"الاسم = الرابط..."} value={bulkInput} onChange={(e) => setBulkInput(e.target.value)} className="bg-slate-900/80 border-slate-700 min-h-[150px] text-[10px] text-right" />
+                <Button onClick={handleBulkAdd} className="w-full bg-indigo-600 hover:bg-indigo-700 font-bold h-12">إضافة الكل</Button>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="lg:col-span-8 space-y-8">
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader><CardTitle className="text-xl font-bold text-center">تعديل قنوات: <span className="text-indigo-400">{activePageName}</span></CardTitle></CardHeader>
+              <CardContent className="space-y-6">
+                <div className="flex flex-col md:flex-row gap-3">
+                  <Input placeholder="اسم القناة" value={newName} onChange={e => setNewName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-12 text-right" />
+                  <Input placeholder="الرابط..." value={newUrl} onChange={e => setNewUrl(e.target.value)} className="bg-slate-900/80 border-slate-700 h-12 text-right" />
+                  <Button onClick={handleSubmit} className="bg-indigo-600 hover:bg-indigo-700 font-bold h-12 px-8">{editingId ? 'تحديث' : 'إضافة'}</Button>
+                </div>
+                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                  {servers.map((s, i) => (
+                    <div key={s.id} className="flex items-center justify-between p-4 bg-slate-900/60 border border-slate-800 rounded-xl group hover:border-indigo-500/30 transition-all">
+                      <div className="flex-grow text-right">
+                        <div className="font-black text-sm">{s.name}</div>
+                        {s.url.startsWith('<iframe') ? (
+                          <div className="text-[10px] text-slate-500 truncate max-w-[300px]">{s.url}</div>
+                        ) : (
+                          <a 
+                            href={s.url} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="text-[10px] text-slate-400 truncate max-w-[300px] hover:text-indigo-400 hover:underline transition-colors block"
+                            title="فتح الرابط الأصلي للقناة"
+                          >
+                            {s.url}
+                          </a>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex flex-col gap-1 mr-2"><button onClick={() => moveChannel(i, 'up')} className="p-1 text-slate-500 hover:text-white" disabled={i === 0}><ChevronUp size={14} /></button><button onClick={() => moveChannel(i, 'down')} className="p-1 text-slate-500 hover:text-white" disabled={i === servers.length - 1}><ChevronDown size={14} /></button></div>
+                        <button onClick={() => { setEditingId(s.id || null); setNewName(s.name); setNewUrl(s.url); }} className="p-2 text-slate-500 hover:text-indigo-400"><Edit2 size={16} /></button>
+                        <button onClick={() => s.id && deleteChannel(s.id)} className="p-2 text-slate-500 hover:text-red-500"><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl ads-section">
               <CardHeader>
                 <CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2"><Code size={20} /> إعدادات الأكواد (Ads/SEO)</CardTitle>
+                <p className="text-center text-[10px] text-slate-500">أضف أكواد التحقق أو الإعلانات هنا وسيتم تفعيلها تلقائياً</p>
               </CardHeader>
               <CardContent className="space-y-4">
-                <Input placeholder="اسم تعريفي للكود" value={scriptName} onChange={e => setScriptName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
-                <Textarea placeholder="ألصق كود السكريبت هنا..." value={newScriptCode} onChange={(e) => setNewScriptCode(e.target.value)} className="bg-slate-900/80 border-slate-700 min-h-[150px] font-mono text-xs text-right" dir="ltr" />
-                <Button onClick={handleAddOrUpdateScript} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg">{editingScriptId ? 'تحديث الكود' : 'حفظ الكود في السحابة'}</Button>
-                
+                <Input placeholder="اسم تعريفي للكود (مثلاً: إعلان منبثق 1)" value={scriptName} onChange={e => setScriptName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                <Textarea placeholder="ألصق كود الجافا سكريبت أو الميتا هنا..." value={newScriptCode} onChange={(e) => setNewScriptCode(e.target.value)} className="bg-slate-900/80 border-slate-700 min-h-[150px] font-mono text-xs text-right" dir="ltr" />
+                <Button onClick={handleAddOrUpdateScript} className="w-full bg-emerald-600 hover:bg-emerald-700 font-black h-12 text-lg">{editingScriptId ? 'تحديث الكود المحفوظ' : 'حفظ الكود في السحابة'}</Button>
                 <div className="pt-6 space-y-3">
-                  <h3 className="text-sm font-bold text-slate-400 border-b border-slate-800 pb-2">قائمة الأكواد المضافة</h3>
-                  {scriptList.map(script => (
-                    <div key={script.id} className="flex items-center justify-between p-3 rounded-lg border bg-slate-900/60 border-slate-800">
+                  <h3 className="text-sm font-bold text-slate-400 border-b border-slate-800 pb-2 flex items-center gap-2"><ListPlus size={16} /> قائمة الأكواد المضافة</h3>
+                  {scriptList.length === 0 ? (<p className="text-center text-xs text-slate-600 py-4">لا توجد أكواد محفوظة حالياً</p>) : (
+                    <div className="space-y-2">
+                      {scriptList.map(script => (
+                        <div key={script.id} className={`flex items-center justify-between p-3 rounded-lg border transition-all ${script.active ? 'bg-slate-900/60 border-slate-800' : 'bg-slate-900/20 border-slate-900 opacity-50'}`}>
+                          <div className="flex items-center gap-2">
+                            <button onClick={() => deleteScript(script.id)} className="text-slate-500 hover:text-red-500 p-1" title="حذف نهائي"><Trash2 size={16} /></button>
+                            <button onClick={() => startEditScript(script)} className="text-slate-500 hover:text-indigo-400 p-1" title="تعديل المحتوى"><Edit2 size={16} /></button>
+                            <button onClick={() => toggleScript(script.id)} className={`${script.active ? 'text-emerald-500' : 'text-slate-600'} p-1`} title={script.active ? "إيقاف مؤقت" : "تفعيل الآن"}>
+                              {script.active ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                            </button>
+                          </div>
+                          <div className="text-right"><span className="text-sm font-bold block">{script.name}</span><span className="text-[9px] text-slate-500 font-mono">ID: {script.id.slice(0,8)}</span></div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-[#0f172a]/40 border-slate-800 text-white shadow-xl">
+              <CardHeader><CardTitle className="text-xl font-bold text-center flex items-center justify-center gap-2"><FileCode size={20} /> إدارة ملفات الـ Service Worker</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                <Input placeholder="اسم الملف (sw.js)" value={newFileName} onChange={e => setNewFileName(e.target.value)} className="bg-slate-900/80 border-slate-700 h-10 text-right" />
+                <Textarea placeholder="محتوى الملف..." value={newFileContent} onChange={(e) => setNewFileContent(e.target.value)} className="bg-slate-900/80 border-slate-700 min-h-[100px] font-mono text-xs text-right" dir="ltr" />
+                <Button onClick={handleSaveFile} className="w-full bg-indigo-600 hover:bg-indigo-700 font-black h-12">حفظ الملف</Button>
+                <div className="space-y-2 pt-4">
+                  {siteFiles.map(file => (
+                    <div key={file.id} className="flex items-center justify-between p-3 bg-slate-900/40 border border-slate-800 rounded-lg">
                       <div className="flex items-center gap-2">
-                        <button onClick={() => deleteScript(script.id)} className="text-slate-500 hover:text-red-500 p-1"><Trash2 size={16} /></button>
-                        <button onClick={() => startEditScript(script)} className="text-slate-500 hover:text-indigo-400 p-1"><Edit2 size={16} /></button>
+                        <button onClick={() => deleteFile(file.id)} className="text-slate-500 hover:text-red-500 p-1" title="حذف"><Trash2 size={16} /></button>
+                        <button onClick={() => { setNewFileName(file.filename); setNewFileContent(file.content); }} className="text-slate-500 hover:text-indigo-400 p-1" title="تعديل"><Edit2 size={16} /></button>
+                        <a 
+                          href={`/${file.filename}`} 
+                          target="_blank" 
+                          rel="noreferrer"
+                          className="text-slate-500 hover:text-emerald-400 p-1"
+                          title="معاينة الملف من موقعك"
+                        >
+                          <Eye size={16} />
+                        </a>
                       </div>
-                      <span className="text-sm font-bold">{script.name}</span>
+                      <span className="text-xs font-mono text-slate-400">/{file.filename}</span>
                     </div>
                   ))}
                 </div>
@@ -364,7 +468,9 @@ const AdminPanel = () => {
             </Card>
           </div>
         </div>
+        <div className="flex justify-center pt-8 pb-12"><Button onClick={() => navigate('/real.html')} className="bg-red-600 hover:bg-red-700 text-white font-black px-12 py-8 rounded-2xl text-xl shadow-2xl flex items-center gap-3"><XCircle size={28} /> إغلاق</Button></div>
       </div>
+      <style dangerouslySetInnerHTML={{ __html: `.custom-scrollbar::-webkit-scrollbar { width: 4px; } .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }`}} />
     </div>
   );
 };
